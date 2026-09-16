@@ -1,0 +1,20 @@
+{
+  "name": "Klassen-Trainer: Gesichter & Namen",
+  "short_name": "Klassentrainer",
+  "description": "Lokale PWA zum schnellen Lernen von Schülergesichtern und -namen mit Audio-Aussprache.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "192x192 512x512 any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"]
+}

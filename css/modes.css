@@ -1,0 +1,225 @@
+/* ==========================================================================
+   Mode Navigation Tabs (Top)
+   ========================================================================== */
+.mode-tabs-bar {
+  display: flex;
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  margin: var(--space-sm) var(--space-lg) 0;
+  border: var(--border-subtle);
+}
+
+.mode-tab {
+  flex: 1;
+  padding: 8px 6px;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mode-tab.is-active {
+  background: var(--bg-surface-elevated);
+  color: var(--accent-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==========================================================================
+   Bottom Action Dock (Thumb Zone)
+   ========================================================================== */
+.bottom-dock {
+  padding: var(--space-md) var(--space-lg) var(--space-lg);
+  background: rgba(19, 29, 49, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  z-index: 10;
+}
+
+/* Progress and Counter Bar */
+.dock-meta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 0 var(--space-xs);
+}
+
+.card-counter-badge {
+  font-weight: 700;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  border: var(--border-subtle);
+}
+
+/* Linear Navigation (Alphabetisch & Zufall) */
+.linear-controls {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
+  gap: var(--space-md);
+  width: 100%;
+}
+
+.nav-btn {
+  padding: 14px 10px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border: var(--border-subtle);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.nav-btn.btn-flip {
+  background: var(--bg-surface-elevated);
+  color: var(--accent-primary);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.nav-btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Leitner Rating Controls (Modus 3)
+   ========================================================================== */
+.leitner-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.leitner-btn-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+}
+
+.leitner-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 6px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  border: none;
+  gap: 2px;
+  box-shadow: var(--shadow-sm);
+}
+
+.leitner-btn .btn-subtext {
+  font-size: 0.68rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.leitner-btn-box1 {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+}
+
+.leitner-btn-box2 {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.leitner-btn-box3 {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.leitner-btn-box4 {
+  background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+}
+
+/* Leitner Session Progress Bar */
+.leitner-progress-wrapper {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--space-xs);
+}
+
+.leitner-progress-fill {
+  height: 100%;
+  background: var(--accent-gradient);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+/* ==========================================================================
+   Empty State & Session Completed Card
+   ========================================================================== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-2xl);
+  gap: var(--space-lg);
+  color: var(--text-secondary);
+  height: 100%;
+}
+
+.empty-state-icon {
+  font-size: 3.5rem;
+  opacity: 0.8;
+}
+
+.session-complete-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-lg);
+  padding: var(--space-2xl);
+  background: var(--bg-card);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: var(--shadow-card);
+}
+
+.session-complete-icon {
+  font-size: 3.5rem;
+}
+
+.session-stats-row {
+  display: flex;
+  gap: var(--space-lg);
+  margin: var(--space-sm) 0;
+}
+
+.stat-box {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-md);
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  min-width: 90px;
+}
+
+.stat-number {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent-primary);
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}

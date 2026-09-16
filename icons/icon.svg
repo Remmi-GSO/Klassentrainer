@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+  
+  <!-- Background rounded rect -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  
+  <!-- Outer Card Frame -->
+  <rect x="136" y="110" width="260" height="280" rx="32" fill="#1e293b" opacity="0.6" transform="rotate(8 266 250)" stroke="#475569" stroke-width="3"/>
+  
+  <!-- Main Front Card -->
+  <g filter="url(#shadow)">
+    <rect x="116" y="96" width="280" height="300" rx="32" fill="url(#cardGrad)" stroke="#38bdf8" stroke-width="4"/>
+    
+    <!-- User Avatar Silhouette -->
+    <circle cx="256" cy="200" r="48" fill="url(#accent)"/>
+    <path d="M186 310 C186 260 216 250 256 250 C296 250 326 260 326 310 Z" fill="url(#accent)"/>
+    
+    <!-- Audio Wave / Sparkle accent -->
+    <circle cx="340" cy="140" r="10" fill="#38bdf8"/>
+    <path d="M356 128 C366 138 366 152 356 162" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M368 120 C384 136 384 164 368 180" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" fill="none"/>
+  </g>
+
+  <!-- Bottom Badge / Text -->
+  <rect x="156" y="420" width="200" height="40" rx="20" fill="url(#accent)"/>
+  <text x="256" y="446" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" letter-spacing="1.5">KLASSEN-TRAINER</text>
+</svg>

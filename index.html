@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0f1d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Lokale PWA zum schnellen Lernen von Schülergesichtern und -namen mit Audio-Aussprache.">
+  <meta name="app-version" content="Version 11.4 (v11.4)">
+  
+  <title>Klassen-Trainer</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/modes.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Kopfzeile: Klassenauswahl & Schnellaktionen -->
+    <header class="app-header">
+      <div class="class-selector-wrapper">
+        <select id="classSelect" class="class-select" aria-label="Klasse auswählen"></select>
+      </div>
+      <div class="header-actions">
+        <button id="installBtn" class="icon-btn hidden" title="Als App installieren" aria-label="App installieren">📥</button>
+        <button id="addClassBtn" class="icon-btn" title="Schüler hinzufügen" aria-label="Schüler hinzufügen">➕</button>
+        <button id="classMenuBtn" class="icon-btn" title="Einstellungen (⚙️)" aria-label="Einstellungen">⚙️</button>
+      </div>
+    </header>
+
+    <!-- Modi-Auswahl-Tabs -->
+    <nav class="mode-tabs-bar" aria-label="Lernmodi">
+      <button id="modeAlphaTab" class="mode-tab is-active">🔤 Alphabetisch</button>
+      <button id="modeRandomTab" class="mode-tab">🎲 Zufällig</button>
+      <button id="modeLeitnerTab" class="mode-tab">🧠 Intelligent</button>
+    </nav>
+
+    <!-- Hauptbühne: 3D-Flip-Karte & Status-Screens -->
+    <main class="stage" id="stage">
+      <div class="card-viewport" id="cardViewport">
+        <div class="flip-card" id="flipCard">
+          
+          <!-- Vorderseite (Foto) -->
+          <div class="card-face card-front">
+            <div class="image-container">
+              <span id="needsReviewBadge" class="needs-review-badge hidden">⚠️ Daten prüfen</span>
+              <img id="studentPhoto" class="student-photo" src="" alt="Schülerfoto">
+            </div>
+            <div class="card-front-hint" id="frontNameBar" role="button" tabindex="0" title="Name aufdecken">
+              <span id="frontNameText">👆 Tippen zum Aufdecken</span>
+            </div>
+          </div>
+
+          <!-- Rückseite (Namen, Geburtsdatum, Alter, Herkunft, Kontakt, Audio & Edit) -->
+          <div class="card-face card-back" id="cardBackFace">
+            <div class="card-back-header-bar">
+              <button id="editStudentBtnHeader" class="btn-edit-header" title="Schülerdaten bearbeiten" aria-label="Schülerdaten bearbeiten">✏️ Bearbeiten</button>
+              <button id="btnFlipBackToFront" class="btn-flip-back" title="Zurück zum Foto" aria-label="Zurück zum Foto">🖼️ Foto</button>
+            </div>
+
+            <div class="student-meta">
+              <div class="student-name-container">
+                <div class="name-row">
+                  <h1 id="studentLastName" class="student-last-name">Nachname</h1>
+                  <button id="btnCopyLastName" class="btn-copy-name" title="Nachname in Zwischenablage kopieren (für Gemini)" aria-label="Nachname kopieren">📋</button>
+                </div>
+                <h2 id="studentFirstName" class="student-first-name">Vorname</h2>
+              </div>
+              
+              <div class="student-birth-info">
+                <span>🎂 <strong id="studentBirthDate">01.01.2008</strong></span>
+                <span class="age-badge" id="studentAge">16 Jahre</span>
+                <span id="studentCountryBadge" class="country-badge hidden">🌍 <strong id="studentCountryText"></strong></span>
+              </div>
+            </div>
+
+            <!-- Anschrift & Telefonnummer (Kontaktdaten) -->
+            <div class="student-contact-info" id="studentContactInfo">
+              <div id="studentAddressRow" class="contact-row hidden">
+                <span class="contact-icon" title="Anschrift">🏠</span>
+                <span id="studentAddressText" class="contact-text"></span>
+                <button id="btnCopyAddress" class="btn-copy-mini" title="Adresse kopieren" aria-label="Adresse kopieren">📋</button>
+              </div>
+              <div id="studentPhoneRow" class="contact-row hidden">
+                <span class="contact-icon" title="Telefonnummer">📞</span>
+                <a id="studentPhoneLink" class="contact-phone-link" href="" title="Anrufen"></a>
+                <button id="btnCopyPhone" class="btn-copy-mini" title="Telefonnummer kopieren" aria-label="Telefonnummer kopieren">📋</button>
+              </div>
+              <div id="studentEmailRow" class="contact-row hidden">
+                <span class="contact-icon" title="E-Mail-Adresse">✉️</span>
+                <a id="studentEmailLink" class="contact-phone-link" href="" title="E-Mail senden"></a>
+                <button id="btnCopyEmail" class="btn-copy-mini" title="E-Mail kopieren" aria-label="E-Mail kopieren">📋</button>
+              </div>
+            </div>
+
+            <!-- Eselsbrücke / Merkhilfe direkt auf der Kartenrückseite -->
+            <div class="student-mnemonic-container">
+              <div class="mnemonic-header">
+                <label for="studentMnemonicInput" class="mnemonic-label">💡 Eselsbrücke für den Nachnamen</label>
+                <span id="mnemonicSaveStatus" class="mnemonic-status"></span>
+              </div>
+              <textarea id="studentMnemonicInput" class="mnemonic-input" placeholder="Merkhilfe/Eselsbrücke eingeben..." rows="2" maxlength="300"></textarea>
+            </div>
+
+            <!-- Audio- & Aufnahmebereich -->
+            <div class="card-back-actions">
+              <div class="audio-section">
+                <button id="playAudioBtn" class="audio-btn audio-play-btn" title="Aussprache anhören" aria-label="Aussprache anhören">▶️</button>
+                <button id="recordAudioBtn" class="audio-btn audio-record-btn" title="Aussprache aufnehmen" aria-label="Aussprache aufnehmen">🎙️</button>
+                <button id="importAudioBtn" class="audio-btn audio-tool-btn" title="Audiodatei importieren (vom Gerät)" aria-label="Audiodatei importieren">📥</button>
+                <button id="exportAudioBtn" class="audio-btn audio-tool-btn" title="Audiodatei exportieren (herunterladen)" aria-label="Audiodatei exportieren">💾</button>
+                <button id="deleteAudioBtn" class="audio-btn audio-tool-btn audio-delete-btn hidden" title="Aussprache löschen" aria-label="Aussprache löschen">🗑️</button>
+              </div>
+              <input type="file" id="audioFileInput" accept="audio/*,.mp3,.m4a,.wav,.webm,.ogg" class="sr-only">
+              <span id="audioStatusLabel" class="audio-status-badge is-empty">Keine Aussprache (🎙️ tippen)</span>
+            </div>
+
+            <!-- Footer-Werkzeuge auf der Karte -->
+            <div class="card-footer-tools">
+              <button id="editStudentBtn" class="secondary-tool-btn">✏️ Bearbeiten</button>
+              <button id="deleteStudentBtn" class="secondary-tool-btn" style="color:var(--color-danger)">🗑️ Löschen</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Leerer Zustand -->
+      <div id="emptyState" class="empty-state hidden">
+        <div class="empty-state-icon" id="emptyStateIcon">👥</div>
+        <h2 id="emptyStateTitle">Keine Schüler vorhanden</h2>
+        <p id="emptyStateDesc">Importiere eine Excel-Tabelle, ein ZIP-Backup mit Fotos oder lege Schüler manuell an.</p>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:12px;">
+          <button class="btn-primary" id="emptyAddBtn">➕ Schüler anlegen</button>
+          <button class="btn-secondary" id="emptyImportExcelBtn">📊 Liste (Excel / PDF) importieren</button>
+          <button class="btn-secondary" id="emptyImportZipBtn">📦 ZIP importieren</button>
+        </div>
+      </div>
+
+      <!-- Sitzungs-Abschluss (Leitner) -->
+      <div id="sessionCompleteState" class="session-complete-card hidden">
+        <div class="session-complete-icon">🎉</div>
+        <h2>Runde abgeschlossen!</h2>
+        <p>Du hast alle Schüler dieser Lernrunde erfolgreich durchgearbeitet.</p>
+        <div class="session-stats-row">
+          <div class="stat-box">
+            <span class="stat-number" id="statMasteredCount">0</span>
+            <span class="stat-label">Sicher gewusst</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-number" id="statDeferredCount">0</span>
+            <span class="stat-label">Weggelegt</span>
+          </div>
+        </div>
+        <button class="btn-primary" id="restartLeitnerBtn">🔄 Neue Runde starten</button>
+      </div>
+    </main>
+
+    <!-- Bottom Dock: Lineare Navigation (Alphabetisch & Zufall) -->
+    <footer id="linearDock" class="bottom-dock">
+      <div class="dock-meta-bar">
+        <span>Fortschritt</span>
+        <span id="cardCounterBadge" class="card-counter-badge">1 / 25</span>
+      </div>
+      <div class="linear-controls">
+        <button id="prevCardBtn" class="nav-btn">⏮️ Zurück</button>
+        <button id="flipCardBtn" class="nav-btn btn-flip">🔄 Umdrehen</button>
+        <button id="nextCardBtn" class="nav-btn">Vor ⏭️</button>
+      </div>
+    </footer>
+
+    <!-- Bottom Dock: Leitner Rating Controls (Modus 3) -->
+    <footer id="leitnerDock" class="bottom-dock hidden">
+      <div class="leitner-progress-wrapper">
+        <div id="leitnerProgressBar" class="leitner-progress-fill"></div>
+      </div>
+      <div class="dock-meta-bar">
+        <span>Session-Fortschritt</span>
+        <span id="leitnerCounterBadge" class="card-counter-badge">18 verbleibend</span>
+      </div>
+      <div class="leitner-controls">
+        <div class="leitner-btn-grid">
+          <button id="btnRateBox1" class="leitner-btn leitner-btn-box1">
+            <span>❌ Gar nicht</span>
+            <span class="btn-subtext">In 2 Karten wieder</span>
+          </button>
+          <button id="btnRateBox2" class="leitner-btn leitner-btn-box2">
+            <span>⚠️ Wackelig</span>
+            <span class="btn-subtext">In 6 Karten wieder</span>
+          </button>
+          <button id="btnRateBox3" class="leitner-btn leitner-btn-box3">
+            <span>✅ Sicher</span>
+            <span class="btn-subtext">Für heute gelernt</span>
+          </button>
+          <button id="btnRateBox4" class="leitner-btn leitner-btn-box4">
+            <span>📥 Weglegen</span>
+            <span class="btn-subtext">Aus Runde entfernen</span>
+          </button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ==========================================================================
+       Modals & Bottom Sheets
+       ========================================================================== -->
+
+  <!-- Modal: Schüler Hinzufügen / Bearbeiten -->
+  <div id="studentModal" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h3 id="studentModalTitle" class="modal-title">Schüler bearbeiten</h3>
+        <button id="btnCancelStudent" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="align-items:center;">
+          <div class="image-picker-box">
+            <img id="studentPhotoPreview" src="" alt="Vorschau">
+          </div>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button type="button" id="btnCaptureCamera" class="btn-secondary" style="font-size:0.85rem; padding:8px 12px;">📷 Kamera</button>
+            <label for="studentPhotoInput" class="btn-secondary" style="font-size:0.85rem; padding:8px 12px; cursor:pointer;">📁 Datei</label>
+          </div>
+          <input type="file" id="studentPhotoInput" accept="image/*" class="sr-only">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputStudentLastName">Nachname *</label>
+          <input type="text" id="inputStudentLastName" class="form-input" placeholder="z. B. Müller" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputStudentFirstName">Vorname</label>
+          <input type="text" id="inputStudentFirstName" class="form-input" placeholder="z. B. Max">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputStudentBirthDate">Geburtsdatum (optional)</label>
+          <input type="date" id="inputStudentBirthDate" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputStudentCountry">🌍 Herkunft / Geburtsort (optional)</label>
+          <input type="text" id="inputStudentCountry" class="form-input" placeholder="z. B. Köln, Berlin, Deutschland, Türkei, Syrien...">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputStudentAddress">🏠 Anschrift / Adresse (optional)</label>
+          <input type="text" id="inputStudentAddress" class="form-input" placeholder="z. B. Musterstraße 12, 50667 Köln">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputStudentPhone">📞 Telefonnummer / Mobil (optional)</label>
+          <input type="tel" id="inputStudentPhone" class="form-input" placeholder="z. B. 0176 12345678">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputStudentEmail">✉️ E-Mail-Adresse (optional)</label>
+          <input type="email" id="inputStudentEmail" class="form-input" placeholder="z. B. max.mueller@schule.de">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="inputStudentMnemonic">💡 Eselsbrücke / Merkhilfe (optional)</label>
+          <textarea id="inputStudentMnemonic" class="form-input" placeholder="z. B. Reim, Wortspiel oder Assoziation zum Nachnamen..." rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">🎙️ Aussprache-Audio</label>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <button type="button" id="modalPlayAudioBtn" class="btn-secondary" style="font-size:0.85rem; padding:8px 12px;" disabled>▶️ Anhören</button>
+            <label for="modalAudioFileInput" class="btn-secondary" style="font-size:0.85rem; padding:8px 12px; cursor:pointer;">📥 Datei importieren</label>
+            <input type="file" id="modalAudioFileInput" accept="audio/*,.mp3,.m4a,.wav,.webm,.ogg" class="sr-only">
+            <button type="button" id="modalExportAudioBtn" class="btn-secondary" style="font-size:0.85rem; padding:8px 12px;" disabled>💾 Herunterladen</button>
+            <button type="button" id="modalDeleteAudioBtn" class="btn-secondary" style="font-size:0.85rem; padding:8px 12px; color:var(--color-danger); display:none;">🗑️ Löschen</button>
+          </div>
+          <span id="modalAudioStatusLabel" class="audio-status-badge is-empty" style="margin-top:6px;">Keine Aussprache</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnSaveStudent" class="btn-primary">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Klassenverwaltung & Einstellungen -->
+  <div id="classModal" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h3 class="modal-title">Einstellungen & Klassen-Optionen</h3>
+        <button id="btnCloseClassModal" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <button id="btnOpenFeaturesModal" class="btn-secondary" style="width:100%; justify-content:flex-start; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; font-weight: 600;">
+          <span>📖</span> Feature-Übersicht & Anleitung
+        </button>
+        <button id="btnNewClass" class="btn-secondary" style="width:100%; justify-content:flex-start;">
+          <span>➕</span> Neue Klasse / Gruppe anlegen
+        </button>
+        <button id="btnImportExcel" class="btn-secondary" style="width:100%; justify-content:flex-start;">
+          <span>📊</span> Liste importieren (Excel, CSV oder PDF)
+        </button>
+        <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv,.pdf" class="sr-only">
+        <button id="btnImportZip" class="btn-secondary" style="width:100%; justify-content:flex-start;">
+          <span>📦</span> ZIP-Datei importieren (Fotos & Daten)
+        </button>
+        <input type="file" id="zipFileInput" accept=".zip" class="sr-only">
+        <button id="btnExportExcel" class="btn-secondary" style="width:100%; justify-content:flex-start; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); color: #10b981; font-weight: 600;">
+          <span>📊</span> Schülerliste als Excel (.xlsx) exportieren
+        </button>
+        <button id="btnExportClass" class="btn-secondary" style="width:100%; justify-content:flex-start;">
+          <span>💾</span> Aktuelle Klasse exportieren (ZIP Backup)
+        </button>
+        <button id="btnResetLeitner" class="btn-secondary" style="width:100%; justify-content:flex-start; color:var(--color-warning);">
+          <span>🔄</span> Lernfortschritt dieser Klasse zurücksetzen
+        </button>
+        <button id="btnDeleteClass" class="btn-secondary" style="width:100%; justify-content:flex-start; color:var(--color-danger);">
+          <span>🗑️</span> Aktuelle Klasse löschen
+        </button>
+
+        <!-- App-Informationen & Version -->
+        <div class="settings-app-info">
+          <div class="settings-version-row">
+            <span class="settings-app-title">
+              <span>🎓</span> Klassen-Trainer
+            </span>
+            <span id="appVersionBadge" class="app-version-badge">Version 11.4 (v11.4)</span>
+          </div>
+          <div class="settings-meta-row">
+            <span>🟢 Offline bereit (PWA)</span>
+            <button id="btnCheckForUpdates" type="button" class="btn-update-check">🔄 Nach Updates suchen</button>
+          </div>
+          <div style="margin-top: 8px;">
+            <button id="btnForceReload" type="button" class="btn-secondary" style="width: 100%; justify-content: center; font-size: 0.8rem; padding: 6px 10px;">⚡ Cache leeren & neu laden</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Feature-Übersicht & Anleitung -->
+  <div id="featuresModal" class="modal-overlay">
+    <div class="modal-sheet" style="max-height: 90vh;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.4rem;">📖</span>
+          <div>
+            <h3 class="modal-title" style="font-size:1.1rem; line-height:1.2;">Funktionen & Anleitung</h3>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Klassen-Trainer Version 11.4 (v11.4)</span>
+          </div>
+        </div>
+        <button id="btnCloseFeaturesModal" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body" style="padding-top: var(--space-md); gap: 14px;">
+
+        <!-- Feature 1: Audio / Aussprache einsprechen lassen -->
+        <div class="feature-guide-card highlight">
+          <div class="feature-guide-header">
+            <span class="feature-guide-icon">🎙️</span>
+            <span>Schüler sprechen ihren Namen selbst ein</span>
+          </div>
+          <div class="feature-guide-body">
+            Lassen Sie Ihre Schüler ihren eigenen Vor- und Nachnamen direkt aufsprechen:
+            <ul>
+              <li>Drehen Sie die Lernkarte auf die <strong>Rückseite</strong>.</li>
+              <li>Tippen Sie auf das Mikrofon <strong>🎙️</strong>, um die Aufnahme zu starten.</li>
+              <li>Der Schüler spricht seinen Namen klar aus. Ein erneuter Klick stoppt & speichert die Aufnahme sofort.</li>
+              <li>Mit <strong>▶️</strong> können Sie sich die Aussprache und richtige Betonung jederzeit vor dem Unterricht anhören!</li>
+            </ul>
+            <div class="feature-guide-tip">
+              💡 <strong>Praxis-Tipp:</strong> Besonders wertvoll bei Namen aus anderen Sprachen oder spezieller Betonung – kein Nachfragen vor der ganzen Klasse nötig!
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 2: Nachname für Gemini kopieren -->
+        <div class="feature-guide-card">
+          <div class="feature-guide-header">
+            <span class="feature-guide-icon">📋</span>
+            <span>1-Klick-Nachname für Gemini (KI-Eselsbrücken)</span>
+          </div>
+          <div class="feature-guide-body">
+            Entwickeln Sie blitzschnell kreative Merkhilfen mit KI:
+            <ul>
+              <li>Tippen Sie auf der Rückseite neben dem Nachnamen auf das Symbol <strong>📋</strong>.</li>
+              <li>Der Nachname wird sofort in Ihre Smartphone-Zwischenablage kopiert.</li>
+              <li>Wechseln Sie zu <strong>Google Gemini</strong> und lassen Sie sich eine Eselsbrücke, ein Wortspiel oder einen Merk-Reim vorschlagen.</li>
+              <li>Die beste Idee tragen Sie direkt ins Feld <em>„💡 Eselsbrücke für den Nachnamen“</em> ein – sie wird automatisch gespeichert!</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Feature 3: Die 3 Lernmodi -->
+        <div class="feature-guide-card">
+          <div class="feature-guide-header">
+            <span class="feature-guide-icon">🔤</span>
+            <span>Die 3 Lernmodi im Detail</span>
+          </div>
+          <div class="feature-guide-body">
+            Über die Tabs oben wechseln Sie flexibel zwischen den Lernmodi:
+            <ul>
+              <li><strong>🔤 Alphabetisch:</strong> Zeigt alle Schüler sortiert nach Nachname (A–Z). Perfekt für den ersten Überblick der Klassenliste.</li>
+              <li><strong>🎲 Zufällig:</strong> Mischt die Schüler durch. Verhindert, dass man sich nur an die Reihenfolge erinnert.</li>
+              <li><strong>🧠 Intelligent (Leitner-System):</strong> Wissenschaftliches Karteikasten-System mit 4 Fächern:
+                <ul style="margin-top:4px;">
+                  <li>🔴 <em>Nochmal:</em> Sofortige Wiederholung in derselben Runde</li>
+                  <li>🟡 <em>Unsicher:</em> Wandert in Fach 2 (mittlere Häufigkeit)</li>
+                  <li>🟢 <em>Gut:</em> Wandert in Fach 3 (seltener)</li>
+                  <li>🌟 <em>Perfekt:</em> Fach 4 (Dauerhaft gemeistert)</li>
+                </ul>
+              </li>
+            </ul>
+            <div class="feature-guide-tip">
+              💡 <strong>Fokus:</strong> Der intelligente Modus trainiert gezielt die Gesichter, die Sie noch nicht sicher beherrschen!
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 4: Steuerung, Gesten & beidseitiges Umdrehen -->
+        <div class="feature-guide-card">
+          <div class="feature-guide-header">
+            <span class="feature-guide-icon">👆</span>
+            <span>Steuerung, Gesten & flüssiges Umdrehen</span>
+          </div>
+          <div class="feature-guide-body">
+            Optimiert für bequeme Einhand-Bedienung auf Smartphones:
+            <ul>
+              <li><strong>Tipp auf die Karte (Vorder- & Rückseite):</strong> Dreht die Karte sofort um (Foto ⇄ Details).</li>
+              <li><strong>Wischen (Swipe) nach oben / unten:</strong> Dreht die Karte ebenfalls von beiden Seiten flüssig um.</li>
+              <li><strong>Wischen (Swipe) nach links / rechts:</strong> Blättert zum nächsten oder vorherigen Schüler (zeigt die neue Karte automatisch wieder mit Foto).</li>
+              <li><strong>Button 🖼️ Foto:</strong> Zusätzlicher Daumen-Button oben rechts auf der Rückseite.</li>
+              <li><strong>Name aufdecken:</strong> Der Balken unten auf der Vorderseite verdeckt den Namen zum Selbsttest. Ein Antippen deckt ihn auf.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Feature 5: Excel-, CSV- & PDF-Import sowie Excel-Export -->
+        <div class="feature-guide-card">
+          <div class="feature-guide-header">
+            <span class="feature-guide-icon">📊</span>
+            <span>Excel-, CSV- & PDF-Listen (Import & Export)</span>
+          </div>
+          <div class="feature-guide-body">
+            Fügen Sie Schülerdaten direkt aus vorhandenen Schul-Listen hinzu oder exportieren Sie saubere Tabellen:
+            <ul>
+              <li><strong>1-Klick Excel-Export:</strong> Unter <em>Einstellungen ⚙️ ➔ Schülerliste als Excel (.xlsx) exportieren</em> wird eine sortierte Tabelle mit <em>Nachname, Vorname, Geburtsdatum, Geburtsort, Adresse, Telefonnummer und E-Mail-Adresse</em> erstellt.</li>
+              <li><strong>Listen importieren:</strong> Unter <em>Einstellungen ⚙️ ➔ Liste importieren</em> einfach Ihre <strong>.xlsx, .csv oder OCR-lesbare .pdf-Datei</strong> auswählen.</li>
+              <li><strong>Kombinierte Spalten:</strong> Erkennt und zerlegt automatisch kombinierte Zellen wie <code>02.07.2007 Kairo / Ägypten</code> in Geburtsdatum und Herkunft/Geburtsort.</li>
+              <li><strong>Anschrift, Telefon & E-Mail:</strong> Importiert und synchronisiert Kontaktdaten direkt auf die Kartenrückseite.</li>
+              <li><strong>Schnellwahl & Zwischenablage:</strong> Telefonnummern und E-Mails lassen sich direkt antippen (Anruf / Mail starten) und Anschrift, Telefon, E-Mail sowie Nachname mit dem 📋-Symbol sofort in die Zwischenablage kopieren.</li>
+              <li><strong>Fuzzy Matching:</strong> Gleicht Namen fehlertolerant ab (z. B. bei kleinen Tippfehlern oder abweichender Schreibweise).</li>
+              <li><strong>Schutz vor Karteileichen:</strong> Schüler auf der Liste, die nicht in der Klasse existieren, werden automatisch ignoriert!</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Feature 6: Datensicherung & Teilen -->
+        <div class="feature-guide-card">
+          <div class="feature-guide-header">
+            <span class="feature-guide-icon">📦</span>
+            <span>ZIP-Backup & Weitergabe an Kollegen</span>
+          </div>
+          <div class="feature-guide-body">
+            <ul>
+              <li>Exportieren Sie die gesamte Klasse inklusive aller Fotos und Tonaufnahmen als kompakte `.zip`-Datei.</li>
+              <li>Diese Datei können Sie auf einem anderen Smartphone importieren oder Fachkollegen bereitstellen.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Feature 7: Offline & Datenschutz -->
+        <div class="feature-guide-card">
+          <div class="feature-guide-header">
+            <span class="feature-guide-icon">🔒</span>
+            <span>100 % Offline & Höchster Datenschutz</span>
+          </div>
+          <div class="feature-guide-body">
+            <ul>
+              <li>Alle Fotos, Namen, Notizen und Audioaufnahmen verbleiben <strong>ausschließlich lokal auf Ihrem Gerät</strong> (IndexedDB).</li>
+              <li>Kein Serverkontakt, kein Tracking, DSGVO-konform.</li>
+              <li>Funktioniert dauerhaft ohne Internet im Schulgebäude oder Flugmodus.</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button id="btnCloseFeaturesFooter" class="btn-primary">Verstanden</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Neue Klasse anlegen -->
+  <div id="newClassModal" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h3 class="modal-title">Neue Klasse / Gruppe anlegen</h3>
+        <button id="btnCancelNewClass" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="inputNewClassName">Name der Klasse oder Lerngruppe *</label>
+          <input type="text" id="inputNewClassName" class="form-input" placeholder="z. B. Klasse 10B, Mathe LK oder Chor" autofocus>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnSaveNewClass" class="btn-primary">Klasse anlegen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Review-Dialog nach ZIP-Import -->
+  <div id="reviewModal" class="modal-overlay">
+    <div class="modal-sheet" style="max-height:92vh;">
+      <div class="modal-header">
+        <h3 class="modal-title">Import-Überprüfung</h3>
+        <button id="btnCancelReview" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="reviewSummaryText" style="font-size:0.9rem; color:var(--text-secondary);"></p>
+        <div id="reviewListContainer" style="display:flex; flex-direction:column; gap:10px; max-height:48vh; overflow-y:auto;"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnSaveReview" class="btn-primary">Import abschließen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Lokale JSZip-, SheetJS- & PDF.js-Bibliotheken (vollständig offline) -->
+  <script src="libs/jszip.min.js"></script>
+  <script src="libs/xlsx.full.min.js"></script>
+  <script src="libs/pdf.min.js"></script>
+  <!-- Hauptskript als ES6-Modul -->
+  <script type="module" src="js/app.js?v=11.4"></script>
+</body>
+</html>
