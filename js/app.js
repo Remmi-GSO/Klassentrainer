@@ -1607,7 +1607,7 @@ async function handleCheckForUpdates() {
     if (swResp.status === 'fulfilled' && swResp.value.ok) {
       const swText = await swResp.value.text();
       const match = swText.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
-      if (match && match[1] && match[1] !== 'klassen-trainer-v11.5') {
+      if (match && match[1] && match[1] !== 'klassen-trainer-v11.5.1') {
         remoteHasNewer = true;
       }
     }
