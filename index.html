@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Lokale PWA zum schnellen Lernen von Schülergesichtern und -namen mit Audio-Aussprache.">
-  <meta name="app-version" content="Version 11.5 (v11.5)">
+  <meta name="app-version" content="Version 11.6 (v11.6)">
   
   <title>Klassen-Trainer</title>
   
@@ -16,10 +16,10 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   
   <!-- CSS Stylesheets -->
-  <link rel="stylesheet" href="css/variables.css?v=11.5">
-  <link rel="stylesheet" href="css/base.css?v=11.5">
-  <link rel="stylesheet" href="css/components.css?v=11.5">
-  <link rel="stylesheet" href="css/modes.css?v=11.5">
+  <link rel="stylesheet" href="css/variables.css?v=11.6">
+  <link rel="stylesheet" href="css/base.css?v=11.6">
+  <link rel="stylesheet" href="css/components.css?v=11.6">
+  <link rel="stylesheet" href="css/modes.css?v=11.6">
 </head>
 <body>
   <div id="app">
@@ -336,7 +336,7 @@
             <span class="settings-app-title">
               <span>🎓</span> Klassen-Trainer
             </span>
-            <span id="appVersionBadge" class="app-version-badge">Version 11.5 (v11.5)</span>
+            <span id="appVersionBadge" class="app-version-badge">Version 11.6 (v11.6)</span>
           </div>
           <div class="settings-meta-row">
             <span>🟢 Offline bereit (PWA)</span>
@@ -358,7 +358,7 @@
           <span style="font-size:1.4rem;">📖</span>
           <div>
             <h3 class="modal-title" style="font-size:1.1rem; line-height:1.2;">Funktionen & Anleitung</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Klassen-Trainer Version 11.5 (v11.5)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Klassen-Trainer Version 11.6 (v11.6)</span>
           </div>
         </div>
         <button id="btnCloseFeaturesModal" class="icon-btn">✕</button>
@@ -368,19 +368,18 @@
         <!-- Feature 1: Audio / Aussprache einsprechen lassen -->
         <div class="feature-guide-card highlight">
           <div class="feature-guide-header">
-            <span class="feature-guide-icon">🎙️</span>
-            <span>Schüler sprechen ihren Namen selbst ein</span>
+            <span class="feature-guide-icon">🗣️</span>
+            <span>Standardton (🔊) vs. Eigene Sprachaufnahme (🗣️)</span>
           </div>
           <div class="feature-guide-body">
-            Lassen Sie Ihre Schüler ihren eigenen Vor- und Nachnamen direkt aufsprechen:
+            Für alle Schüler ist bereits ein natürlicher <strong>Standardton (🔊)</strong> sowie die <strong>Lautschrift (💡)</strong> hinterlegt. Zusätzlich können Schüler ihren Namen selbst einsprechen:
             <ul>
-              <li>Drehen Sie die Lernkarte auf die <strong>Rückseite</strong>.</li>
-              <li>Tippen Sie auf das Mikrofon <strong>🎙️</strong>, um die Aufnahme zu starten.</li>
-              <li>Der Schüler spricht seinen Namen klar aus. Ein erneuter Klick stoppt & speichert die Aufnahme sofort.</li>
-              <li>Mit <strong>▶️</strong> können Sie sich die Aussprache und richtige Betonung jederzeit vor dem Unterricht anhören!</li>
+              <li>Oben rechts auf der Fotokarte zeigt <strong>🔊</strong> den hinterlegten Standardton an.</li>
+              <li>Wurde der Name von einem Menschen eingesprochen (über <strong>🎙️</strong> auf der Rückseite), wechselt das Symbol oben rechts automatisch zum <strong>sprechenden Mund 🗣️</strong>!</li>
+              <li>Über die Leuchte <strong>💡</strong> oben links blenden Sie jederzeit die Lautschrift und Ihre Eselsbrücke direkt auf dem Foto ein.</li>
             </ul>
             <div class="feature-guide-tip">
-              💡 <strong>Praxis-Tipp:</strong> Besonders wertvoll bei Namen aus anderen Sprachen oder spezieller Betonung – kein Nachfragen vor der ganzen Klasse nötig!
+              💡 <strong>Praxis-Tipp:</strong> Wenn Sie eine eigene Aufnahme (🗣️) löschen, stellt die App automatisch wieder den Standardton (🔊) her!
             </div>
           </div>
         </div>
@@ -546,6 +545,6 @@
   <script src="libs/xlsx.full.min.js"></script>
   <script src="libs/pdf.min.js"></script>
   <!-- Hauptskript als ES6-Modul -->
-  <script type="module" src="js/app.js?v=11.5"></script>
+  <script type="module" src="js/app.js?v=11.6"></script>
 </body>
 </html>

@@ -15,7 +15,7 @@ import { initLeitnerMode, rateCurrentCard } from './modes/leitner-mode.js';
 import { processExcelImport, exportClassExcel } from './excel-importer.js';
 import { ensurePhoneticInMnemonic, getDefaultAudioUrl } from './phonetics.js';
 
-export const APP_VERSION = 'Version 11.5 (v11.5)';
+export const APP_VERSION = 'Version 11.6 (v11.6)';
 
 // DOM Referenzen
 const DOM = {
@@ -174,6 +174,7 @@ let editingStudentId = null;
 let pendingImportStudents = [];
 let deferredInstallPrompt = null;
 let modalStudentAudioBlob = null;
+let modalStudentAudioSource = null;
 let mnemonicSaveTimeout = null;
 
 /* ==========================================================================
@@ -514,22 +515,38 @@ async function loadStudentsForClass(classId) {
       s.mnemonic = updatedMnemonic;
       changed = true;
     }
-    // 5. Natürliche Neural-TTS Aussprache als Standard hinterlegen, falls noch keine Aufnahme vorhanden ist
-    if (!s.audioBlob && !s.audioDeletedByUser) {
-      const defaultAudioUrl = getDefaultAudioUrl(s.lastName, s.firstName);
-      if (defaultAudioUrl) {
-        try {
-          const resp = await fetch(defaultAudioUrl);
-          if (resp.ok) {
-            const buf = await resp.arrayBuffer();
-            if (buf.byteLength > 100) {
-              s.audioBlob = new Blob([buf], { type: 'audio/mpeg' });
-              changed = true;
-            }
+    // 5. Audio-Quelle klassifizieren ('default' = Neural-TTS Standardton, 'human' = manuell eingesprochen)
+    const defaultAudioUrl = getDefaultAudioUrl(s.lastName, s.firstName);
+    if (s.audioBlob && !s.audioSource) {
+      const blobType = (s.audioBlob.type || '').toLowerCase();
+      if ((blobType.includes('mpeg') || blobType.includes('mp3')) && defaultAudioUrl) {
+        s.audioSource = 'default';
+        s.defaultAudioUrl = defaultAudioUrl;
+      } else {
+        s.audioSource = 'human';
+      }
+      changed = true;
+    }
+
+    // 6. Natürliche Neural-TTS Aussprache als Standard hinterlegen, falls noch keine Aufnahme vorhanden ist
+    // oder falls sich beim Standardton der Name (z. B. nach Excel-Import) konkretisiert hat
+    const shouldLoadDefault = (!s.audioBlob && !s.audioDeletedByUser) ||
+      (s.audioSource === 'default' && defaultAudioUrl && s.defaultAudioUrl && s.defaultAudioUrl !== defaultAudioUrl);
+
+    if (shouldLoadDefault && defaultAudioUrl) {
+      try {
+        const resp = await fetch(defaultAudioUrl);
+        if (resp.ok) {
+          const buf = await resp.arrayBuffer();
+          if (buf.byteLength > 100) {
+            s.audioBlob = new Blob([buf], { type: 'audio/mpeg' });
+            s.audioSource = 'default';
+            s.defaultAudioUrl = defaultAudioUrl;
+            changed = true;
           }
-        } catch (_) {
-          // Offline oder Audiodatei nicht erreichbar -> stillschweigend überspringen
         }
+      } catch (_) {
+        // Offline oder Audiodatei nicht erreichbar -> stillschweigend überspringen
       }
     }
     if (changed) {
@@ -875,17 +892,35 @@ function renderUI() {
     DOM.mnemonicSaveStatus.classList.remove('is-visible');
   }
 
-  // Audio-Status & Buttons (Vorderseite 🔊 & Rückseite ▶️)
+  // Audio-Status & Buttons (Vorderseite: 🔊 Standardton vs. 🗣️ Mensch eingesprochen & Rückseite ▶️)
   if (currentStudent.audioBlob) {
-    if (DOM.frontAudioBtn) DOM.frontAudioBtn.classList.remove('hidden');
+    const isHumanAudio = currentStudent.audioSource === 'human';
+    if (DOM.frontAudioBtn) {
+      DOM.frontAudioBtn.classList.remove('hidden');
+      DOM.frontAudioBtn.textContent = isHumanAudio ? '🗣️' : '🔊';
+      DOM.frontAudioBtn.classList.toggle('is-human-audio', isHumanAudio);
+      DOM.frontAudioBtn.classList.toggle('is-default-audio', !isHumanAudio);
+      const btnTitle = isHumanAudio
+        ? 'Eigene Sprachaufnahme abspielen (Mensch)'
+        : 'Standardton für den Namen abspielen';
+      DOM.frontAudioBtn.title = btnTitle;
+      DOM.frontAudioBtn.setAttribute('aria-label', btnTitle);
+    }
     DOM.playAudioBtn.disabled = false;
     DOM.playAudioBtn.style.opacity = '1';
     if (DOM.exportAudioBtn) DOM.exportAudioBtn.disabled = false;
     if (DOM.deleteAudioBtn) DOM.deleteAudioBtn.classList.remove('hidden');
-    DOM.audioStatusLabel.textContent = '🔊 Aussprache vorhanden';
-    DOM.audioStatusLabel.className = 'audio-status-badge is-available';
+    DOM.audioStatusLabel.textContent = isHumanAudio
+      ? '🗣️ Eigene Aufnahme (Mensch)'
+      : '🔊 Standardton hinterlegt';
+    DOM.audioStatusLabel.className = isHumanAudio
+      ? 'audio-status-badge is-available is-human'
+      : 'audio-status-badge is-available';
   } else {
-    if (DOM.frontAudioBtn) DOM.frontAudioBtn.classList.add('hidden');
+    if (DOM.frontAudioBtn) {
+      DOM.frontAudioBtn.classList.add('hidden');
+      DOM.frontAudioBtn.classList.remove('is-human-audio', 'is-default-audio');
+    }
     DOM.playAudioBtn.disabled = true;
     DOM.playAudioBtn.style.opacity = '0.35';
     if (DOM.exportAudioBtn) DOM.exportAudioBtn.disabled = true;
@@ -997,10 +1032,11 @@ async function handlePlayAudio(e) {
   }
   const currentStudent = store.getCurrentStudent();
   if (currentStudent && currentStudent.audioBlob) {
+    const isHumanAudio = currentStudent.audioSource === 'human';
     DOM.playAudioBtn.style.transform = 'scale(1.2)';
     DOM.playAudioBtn.classList.add('is-playing');
     if (DOM.frontAudioBtn) DOM.frontAudioBtn.classList.add('is-playing');
-    DOM.audioStatusLabel.textContent = '🔊 Spielt ab...';
+    DOM.audioStatusLabel.textContent = isHumanAudio ? '🗣️ Spielt eigene Aufnahme...' : '🔊 Spielt Standardton...';
     DOM.audioStatusLabel.className = 'audio-status-badge is-playing';
 
     try {
@@ -1012,8 +1048,12 @@ async function handlePlayAudio(e) {
       DOM.playAudioBtn.style.transform = 'scale(1)';
       DOM.playAudioBtn.classList.remove('is-playing');
       if (DOM.frontAudioBtn) DOM.frontAudioBtn.classList.remove('is-playing');
-      DOM.audioStatusLabel.textContent = '🔊 Aussprache vorhanden';
-      DOM.audioStatusLabel.className = 'audio-status-badge is-available';
+      DOM.audioStatusLabel.textContent = isHumanAudio
+        ? '🗣️ Eigene Aufnahme (Mensch)'
+        : '🔊 Standardton hinterlegt';
+      DOM.audioStatusLabel.className = isHumanAudio
+        ? 'audio-status-badge is-available is-human'
+        : 'audio-status-badge is-available';
     }
   }
 }
@@ -1040,17 +1080,18 @@ async function handleToggleAudioRecording(e) {
       showToast('⚠️ Mikrofonzugriff verweigert oder nicht verfügbar');
     }
   } else {
-    // Aufnahme stoppen & speichern
+    // Aufnahme stoppen & speichern -> als menschliche Aufnahme ('human') markieren (🗣️)
     try {
       const audioBlob = await stopRecording();
       isRecordingActive = false;
       DOM.recordAudioBtn.classList.remove('is-recording');
 
       currentStudent.audioBlob = audioBlob;
+      currentStudent.audioSource = 'human';
       currentStudent.audioDeletedByUser = false;
       await db.saveStudent(currentStudent);
       store.emit('stateChange', store.getState());
-      showToast('🎙️ Aussprache erfolgreich aufgenommen & gespeichert');
+      showToast('🗣️ Eigene Sprachaufnahme gespeichert');
     } catch (err) {
       console.error('Fehler beim Stoppen der Aufnahme:', err);
       isRecordingActive = false;
@@ -1070,10 +1111,11 @@ async function handleCardAudioFileSelected(e) {
 
   try {
     currentStudent.audioBlob = file;
+    currentStudent.audioSource = 'human';
     currentStudent.audioDeletedByUser = false;
     await db.saveStudent(currentStudent);
     store.emit('stateChange', store.getState());
-    showToast('📥 Audiodatei erfolgreich importiert');
+    showToast('🗣️ Eigene Audiodatei importiert');
   } catch (err) {
     console.error('Fehler beim Importieren der Audiodatei:', err);
     showToast('⚠️ Fehler beim Audio-Import');
@@ -1104,8 +1146,40 @@ async function handleDeleteAudio(e) {
   const currentStudent = store.getCurrentStudent();
   if (!currentStudent || !currentStudent.audioBlob) return;
 
+  const isHumanAudio = currentStudent.audioSource === 'human';
+  const defaultAudioUrl = getDefaultAudioUrl(currentStudent.lastName, currentStudent.firstName);
+
+  if (isHumanAudio && defaultAudioUrl) {
+    if (confirm(`Eigene Sprachaufnahme für "${currentStudent.firstName} ${currentStudent.lastName}" löschen und wieder auf den Standardton (🔊) zurücksetzen?`)) {
+      try {
+        const resp = await fetch(defaultAudioUrl);
+        if (resp.ok) {
+          const buf = await resp.arrayBuffer();
+          if (buf.byteLength > 100) {
+            currentStudent.audioBlob = new Blob([buf], { type: 'audio/mpeg' });
+            currentStudent.audioSource = 'default';
+            currentStudent.defaultAudioUrl = defaultAudioUrl;
+            currentStudent.audioDeletedByUser = false;
+            await db.saveStudent(currentStudent);
+            store.emit('stateChange', store.getState());
+            showToast('🔊 Eigene Aufnahme gelöscht – Standardton wiederhergestellt');
+            return;
+          }
+        }
+      } catch (_) {}
+      currentStudent.audioBlob = null;
+      currentStudent.audioSource = null;
+      currentStudent.audioDeletedByUser = true;
+      await db.saveStudent(currentStudent);
+      store.emit('stateChange', store.getState());
+      showToast('🗑️ Eigene Aufnahme gelöscht');
+    }
+    return;
+  }
+
   if (confirm(`Aussprache für "${currentStudent.firstName} ${currentStudent.lastName}" wirklich löschen?`)) {
     currentStudent.audioBlob = null;
+    currentStudent.audioSource = null;
     currentStudent.audioDeletedByUser = true;
     await db.saveStudent(currentStudent);
     store.emit('stateChange', store.getState());
@@ -1119,11 +1193,16 @@ async function handleDeleteAudio(e) {
 function updateModalAudioUI() {
   if (!DOM.modalAudioStatusLabel) return;
   if (modalStudentAudioBlob) {
+    const isHumanAudio = modalStudentAudioSource === 'human';
     if (DOM.modalPlayAudioBtn) DOM.modalPlayAudioBtn.disabled = false;
     if (DOM.modalExportAudioBtn) DOM.modalExportAudioBtn.disabled = false;
     if (DOM.modalDeleteAudioBtn) DOM.modalDeleteAudioBtn.style.display = 'inline-flex';
-    DOM.modalAudioStatusLabel.className = 'audio-status-badge is-available';
-    DOM.modalAudioStatusLabel.textContent = '🔊 Aussprache vorhanden';
+    DOM.modalAudioStatusLabel.className = isHumanAudio
+      ? 'audio-status-badge is-available is-human'
+      : 'audio-status-badge is-available';
+    DOM.modalAudioStatusLabel.textContent = isHumanAudio
+      ? '🗣️ Eigene Aufnahme (Mensch)'
+      : '🔊 Standardton hinterlegt';
   } else {
     if (DOM.modalPlayAudioBtn) DOM.modalPlayAudioBtn.disabled = true;
     if (DOM.modalExportAudioBtn) DOM.modalExportAudioBtn.disabled = true;
@@ -1137,9 +1216,10 @@ function handleModalAudioFileSelected(e) {
   const file = e.target.files[0];
   if (!file) return;
   modalStudentAudioBlob = file;
+  modalStudentAudioSource = 'human';
   updateModalAudioUI();
   DOM.modalAudioFileInput.value = '';
-  showToast('📥 Audio für Schüler ausgewählt');
+  showToast('🗣️ Eigene Audiodatei ausgewählt');
 }
 
 async function handleModalPlayAudio() {
@@ -1155,7 +1235,9 @@ async function handleModalPlayAudio() {
   }
   if (DOM.modalAudioStatusLabel) {
     DOM.modalAudioStatusLabel.className = 'audio-status-badge is-playing';
-    DOM.modalAudioStatusLabel.textContent = '🔊 Spielt ab...';
+    DOM.modalAudioStatusLabel.textContent = modalStudentAudioSource === 'human'
+      ? '🗣️ Spielt eigene Aufnahme...'
+      : '🔊 Spielt Standardton...';
   }
 
   try {
@@ -1182,6 +1264,7 @@ function handleModalExportAudio() {
 
 function handleModalDeleteAudio() {
   modalStudentAudioBlob = null;
+  modalStudentAudioSource = null;
   updateModalAudioUI();
   showToast('🗑️ Audio im Entwurf entfernt');
 }
@@ -1219,6 +1302,7 @@ function openAddStudentModal() {
   editingStudentId = null;
   selectedStudentBlob = null;
   modalStudentAudioBlob = null;
+  modalStudentAudioSource = null;
   DOM.studentModalTitle.textContent = 'Neuen Schüler anlegen';
   DOM.inputStudentLastName.value = '';
   DOM.inputStudentFirstName.value = '';
@@ -1241,6 +1325,7 @@ function handleEditCurrentStudent(e) {
   editingStudentId = currentStudent.id;
   selectedStudentBlob = currentStudent.imageBlob;
   modalStudentAudioBlob = currentStudent.audioBlob || null;
+  modalStudentAudioSource = currentStudent.audioSource || (currentStudent.audioBlob ? 'default' : null);
   DOM.studentModalTitle.textContent = 'Schülerdaten bearbeiten';
   DOM.inputStudentLastName.value = (/^(vj\.?|vollj\.?|volljährig|volljaehrig)$/i.test(currentStudent.lastName || '')) ? '' : (currentStudent.lastName || '');
   DOM.inputStudentFirstName.value = (/^(vj\.?|vollj\.?|volljährig|volljaehrig)$/i.test(currentStudent.firstName || '')) ? '' : (currentStudent.firstName || '');
@@ -1321,6 +1406,7 @@ async function handleSaveStudentModal() {
     mnemonic,
     imageBlob: selectedStudentBlob,
     audioBlob: modalStudentAudioBlob,
+    audioSource: modalStudentAudioBlob ? (modalStudentAudioSource || 'default') : null,
     needsReview: false,
     leitnerBox: 1,
     lastReviewed: null
@@ -1345,6 +1431,7 @@ function closeStudentModal() {
   DOM.studentModal.classList.remove('is-active');
   DOM.studentPhotoInput.value = '';
   modalStudentAudioBlob = null;
+  modalStudentAudioSource = null;
   if (modalPhotoPreviewUrl) {
     URL.revokeObjectURL(modalPhotoPreviewUrl);
     modalPhotoPreviewUrl = null;
@@ -1607,7 +1694,7 @@ async function handleCheckForUpdates() {
     if (swResp.status === 'fulfilled' && swResp.value.ok) {
       const swText = await swResp.value.text();
       const match = swText.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
-      if (match && match[1] && match[1] !== 'klassen-trainer-v11.5.1') {
+      if (match && match[1] && match[1] !== 'klassen-trainer-v11.6') {
         remoteHasNewer = true;
       }
     }

@@ -736,6 +736,13 @@
   right: 12px;
 }
 
+.front-audio-btn.is-human-audio {
+  background: rgba(16, 185, 129, 0.32);
+  border: 1.5px solid #34d399;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), 0 0 14px rgba(16, 185, 129, 0.45);
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.65);
+}
+
 .front-audio-btn.is-playing {
   background: rgba(56, 189, 248, 0.3);
   border-color: #38bdf8;

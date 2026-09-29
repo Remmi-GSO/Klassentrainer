@@ -169,6 +169,7 @@ export async function importClassZip(zipFile, classId) {
                (metadataJson && studentMeta.audioFilename && lowerK === getCleanBasename(studentMeta.audioFilename).toLowerCase());
       });
 
+      let audioSource = (studentMeta && studentMeta.audioSource) ? studentMeta.audioSource : null;
       if (matchKey && audioEntries[matchKey]) {
         const rawAudioBlob = await audioEntries[matchKey].async('blob');
         const entryName = (audioEntries[matchKey].name || '').toLowerCase();
@@ -178,6 +179,9 @@ export async function importClassZip(zipFile, classId) {
         else if (entryName.endsWith('.m4a') || entryName.endsWith('.mp4')) mime = 'audio/mp4';
         else if (entryName.endsWith('.ogg')) mime = 'audio/ogg';
         audioBlob = new Blob([rawAudioBlob], { type: mime });
+        if (!audioSource) {
+          audioSource = (mime === 'audio/mpeg' && metadataJson) ? 'default' : 'human';
+        }
       }
 
       if (studentMeta.needsReview) {
@@ -201,6 +205,7 @@ export async function importClassZip(zipFile, classId) {
         mnemonic: studentMeta.mnemonic || '',
         imageBlob: webpBlob,
         audioBlob: audioBlob || null,
+        audioSource: audioBlob ? (audioSource || 'human') : null,
         needsReview: !!studentMeta.needsReview,
         leitnerBox: 1,
         lastReviewed: null
@@ -277,6 +282,7 @@ export async function exportClassZip(classId, className) {
       mnemonic: student.mnemonic || '',
       imageFilename: imageFilename,
       audioFilename: audioFilename,
+      audioSource: student.audioSource || (student.audioBlob ? 'default' : null),
       leitnerBox: student.leitnerBox || 1,
       lastReviewed: student.lastReviewed || null
     });

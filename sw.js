@@ -1,4 +1,4 @@
-const CACHE_NAME = 'klassen-trainer-v11.5.1';
+const CACHE_NAME = 'klassen-trainer-v11.6';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -8,11 +8,11 @@ const ASSETS_TO_CACHE = [
   './libs/xlsx.full.min.js',
   './libs/pdf.min.js',
   './libs/pdf.worker.min.js',
-  './css/variables.css?v=11.5',
-  './css/base.css?v=11.5',
-  './css/components.css?v=11.5',
-  './css/modes.css?v=11.5',
-  './js/app.js?v=11.5',
+  './css/variables.css?v=11.6',
+  './css/base.css?v=11.6',
+  './css/components.css?v=11.6',
+  './css/modes.css?v=11.6',
+  './js/app.js?v=11.6',
   './js/app.js',
   './js/db.js',
   './js/store.js',
