@@ -140,6 +140,8 @@ export async function saveStudent(studentData) {
   });
 }
 
+export const updateStudent = saveStudent;
+
 export async function deleteStudent(studentId) {
   const db = await getDB();
   return new Promise((resolve, reject) => {

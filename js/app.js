@@ -13,8 +13,9 @@ import { initAlphaMode, alphaNext, alphaPrev } from './modes/alpha-mode.js';
 import { initRandomMode, randomNext, randomPrev } from './modes/random-mode.js';
 import { initLeitnerMode, rateCurrentCard } from './modes/leitner-mode.js';
 import { processExcelImport, exportClassExcel } from './excel-importer.js';
+import { ensurePhoneticInMnemonic, getDefaultAudioUrl } from './phonetics.js';
 
-export const APP_VERSION = 'Version 11.4 (v11.4)';
+export const APP_VERSION = 'Version 11.5 (v11.5)';
 
 // DOM Referenzen
 const DOM = {
@@ -47,6 +48,11 @@ const DOM = {
   statDeferredCount: document.getElementById('statDeferredCount'),
   restartLeitnerBtn: document.getElementById('restartLeitnerBtn'),
   studentPhoto: document.getElementById('studentPhoto'),
+  frontMnemonicBtn: document.getElementById('frontMnemonicBtn'),
+  frontAudioBtn: document.getElementById('frontAudioBtn'),
+  frontMnemonicOverlay: document.getElementById('frontMnemonicOverlay'),
+  frontMnemonicOverlayText: document.getElementById('frontMnemonicOverlayText'),
+  frontMnemonicCloseBtn: document.getElementById('frontMnemonicCloseBtn'),
   needsReviewBadge: document.getElementById('needsReviewBadge'),
   frontNameBar: document.getElementById('frontNameBar'),
   frontNameText: document.getElementById('frontNameText'),
@@ -162,6 +168,8 @@ let modalPhotoPreviewUrl = null;
 let reviewThumbUrls = [];
 let isRecordingActive = false;
 let isFrontNameRevealed = false;
+let isFrontMnemonicOpen = false;
+let lastRenderedStudentId = null;
 let editingStudentId = null;
 let pendingImportStudents = [];
 let deferredInstallPrompt = null;
@@ -245,16 +253,36 @@ function setupEventListeners() {
   DOM.nextCardBtn.addEventListener('click', handleNextCard);
   DOM.flipCardBtn.addEventListener('click', toggleCardFlip);
 
-  // Leitner Rating Buttons
-  DOM.btnRateBox1.addEventListener('click', () => rateCurrentCard(1));
-  DOM.btnRateBox2.addEventListener('click', () => rateCurrentCard(2));
-  DOM.btnRateBox3.addEventListener('click', () => rateCurrentCard(3));
-  DOM.btnRateBox4.addEventListener('click', () => rateCurrentCard(4));
+  // Leitner Rating Buttons (wichtig: prepareCardTransition vor dem Kartenwechsel aufrufen!)
+  DOM.btnRateBox1.addEventListener('click', () => { prepareCardTransition(); rateCurrentCard(1); });
+  DOM.btnRateBox2.addEventListener('click', () => { prepareCardTransition(); rateCurrentCard(2); });
+  DOM.btnRateBox3.addEventListener('click', () => { prepareCardTransition(); rateCurrentCard(3); });
+  DOM.btnRateBox4.addEventListener('click', () => { prepareCardTransition(); rateCurrentCard(4); });
 
-  // Namens-Aufdecken auf Kartenvorderseite (sichere Touch-Isolation für Smartphones)
+  // Namens-Aufdecken & Eck-Buttons auf Kartenvorderseite (sichere Touch-Isolation für Smartphones)
   if (DOM.frontNameBar) {
     DOM.frontNameBar.addEventListener('pointerdown', (e) => e.stopPropagation());
     DOM.frontNameBar.addEventListener('click', handleToggleFrontName);
+  }
+  if (DOM.frontMnemonicBtn) {
+    DOM.frontMnemonicBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+    DOM.frontMnemonicBtn.addEventListener('click', handleToggleFrontMnemonic);
+  }
+  if (DOM.frontMnemonicCloseBtn) {
+    DOM.frontMnemonicCloseBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+    DOM.frontMnemonicCloseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      isFrontMnemonicOpen = false;
+      updateFrontMnemonicDisplay();
+    });
+  }
+  if (DOM.frontMnemonicOverlay) {
+    DOM.frontMnemonicOverlay.addEventListener('pointerdown', (e) => e.stopPropagation());
+    DOM.frontMnemonicOverlay.addEventListener('click', (e) => e.stopPropagation());
+  }
+  if (DOM.frontAudioBtn) {
+    DOM.frontAudioBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+    DOM.frontAudioBtn.addEventListener('click', handlePlayAudio);
   }
 
   // Schüler Aktionen & Rückseiten-Tools
@@ -341,6 +369,7 @@ function setupEventListeners() {
 }
 
 function handleRestartLeitner() {
+  prepareCardTransition();
   const { students } = store.getState();
   initLeitnerMode(students);
 }
@@ -448,11 +477,14 @@ async function selectClass(classId) {
 
 async function loadStudentsForClass(classId) {
   prepareCardTransition();
+  lastRenderedStudentId = null;
   let students = await db.getStudentsByClass(classId);
 
-  // Automatische Bereinigung von Alt-Daten (z. B. "vj" als Vorname oder Herkunft, fehlerhafte Volljährigkeitsjahre)
+  // Automatische Bereinigung von Alt-Daten + Lautschrift (Zeile 1) + Neural-TTS Standard-Audio
   const currentYear = new Date().getFullYear();
-  for (const s of students) {
+  const changedStudents = [];
+
+  await Promise.all(students.map(async (s) => {
     let changed = false;
     // 1. Vorname bereinigen
     if (s.firstName && /^(vj\.?|vollj\.?|volljährig|volljaehrig)$/i.test(s.firstName.trim())) {
@@ -476,8 +508,40 @@ async function loadStudentsForClass(classId) {
         }
       }
     }
+    // 4. Lautschrift immer in der 1. Zeile der Eselsbrücke hinterlegen (unter Berücksichtigung von Name & Herkunft)
+    const updatedMnemonic = ensurePhoneticInMnemonic(s.mnemonic || '', s.lastName, s.firstName, s.country);
+    if (updatedMnemonic && updatedMnemonic !== (s.mnemonic || '')) {
+      s.mnemonic = updatedMnemonic;
+      changed = true;
+    }
+    // 5. Natürliche Neural-TTS Aussprache als Standard hinterlegen, falls noch keine Aufnahme vorhanden ist
+    if (!s.audioBlob && !s.audioDeletedByUser) {
+      const defaultAudioUrl = getDefaultAudioUrl(s.lastName, s.firstName);
+      if (defaultAudioUrl) {
+        try {
+          const resp = await fetch(defaultAudioUrl);
+          if (resp.ok) {
+            const buf = await resp.arrayBuffer();
+            if (buf.byteLength > 100) {
+              s.audioBlob = new Blob([buf], { type: 'audio/mpeg' });
+              changed = true;
+            }
+          }
+        } catch (_) {
+          // Offline oder Audiodatei nicht erreichbar -> stillschweigend überspringen
+        }
+      }
+    }
     if (changed) {
-      await db.updateStudent(s);
+      changedStudents.push(s);
+    }
+  }));
+
+  if (changedStudents.length > 0) {
+    try {
+      await db.saveMultipleStudents(changedStudents);
+    } catch (err) {
+      console.warn('Fehler beim Speichern aktualisierter Schülerdaten:', err);
     }
   }
 
@@ -520,6 +584,7 @@ function switchMode(newMode) {
    ========================================================================== */
 function prepareCardTransition() {
   isFrontNameRevealed = false;
+  isFrontMnemonicOpen = false;
   stopAudioPlayback();
   cancelRecordingIfActive();
   store.setState({ isFlipped: false });
@@ -565,6 +630,66 @@ function updateFrontNameDisplay() {
   } else {
     DOM.frontNameBar.classList.remove('is-revealed');
     DOM.frontNameText.textContent = '👆 Tippen zum Aufdecken';
+  }
+}
+
+function handleToggleFrontMnemonic(e) {
+  if (e) e.stopPropagation();
+  isFrontMnemonicOpen = !isFrontMnemonicOpen;
+  updateFrontMnemonicDisplay();
+}
+
+function updateFrontMnemonicDisplay() {
+  const currentStudent = store.getCurrentStudent();
+  if (!DOM.frontMnemonicBtn || !DOM.frontMnemonicOverlay || !DOM.frontMnemonicOverlayText) return;
+
+  if (!currentStudent) {
+    DOM.frontMnemonicBtn.classList.add('hidden');
+    DOM.frontMnemonicOverlay.classList.add('hidden');
+    return;
+  }
+
+  const rawMnemonic = (currentStudent.mnemonic || '').trim();
+  if (!rawMnemonic) {
+    DOM.frontMnemonicBtn.classList.add('hidden');
+    DOM.frontMnemonicOverlay.classList.add('hidden');
+    return;
+  }
+
+  DOM.frontMnemonicBtn.classList.remove('hidden');
+
+  const lines = rawMnemonic.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const firstLine = lines[0] || '';
+  const customLines = lines.slice(1).join('\n').trim();
+  const hasCustom = customLines.length > 0 || (!firstLine.startsWith('🗣️') && lines.length > 0);
+
+  DOM.frontMnemonicBtn.classList.toggle('has-custom-note', hasCustom);
+  DOM.frontMnemonicBtn.classList.toggle('is-active', isFrontMnemonicOpen);
+
+  if (isFrontMnemonicOpen) {
+    DOM.frontMnemonicOverlay.classList.remove('hidden');
+    DOM.frontMnemonicOverlayText.innerHTML = '';
+
+    if (firstLine.startsWith('🗣️')) {
+      const phonDiv = document.createElement('div');
+      phonDiv.className = 'front-mnemonic-phonetic-line';
+      phonDiv.textContent = firstLine;
+      DOM.frontMnemonicOverlayText.appendChild(phonDiv);
+
+      if (customLines) {
+        const customDiv = document.createElement('div');
+        customDiv.className = 'front-mnemonic-custom-lines';
+        customDiv.textContent = customLines;
+        DOM.frontMnemonicOverlayText.appendChild(customDiv);
+      }
+    } else {
+      const customDiv = document.createElement('div');
+      customDiv.className = 'front-mnemonic-custom-lines';
+      customDiv.textContent = rawMnemonic;
+      DOM.frontMnemonicOverlayText.appendChild(customDiv);
+    }
+  } else {
+    DOM.frontMnemonicOverlay.classList.add('hidden');
   }
 }
 
@@ -645,8 +770,17 @@ function renderUI() {
 
   // Leerer Zustand oder Runden-Abschluss
   if (!currentStudent) {
+    lastRenderedStudentId = null;
     renderEmptyOrCompleteState();
     return;
+  }
+
+  // Wenn zu einem anderen Schüler gewechselt wurde (z. B. im Intelligenten Modus),
+  // aufgedeckten Namen und Eselsbrücken-Overlay garantiert wieder ausblenden!
+  if (currentStudent.id !== lastRenderedStudentId) {
+    isFrontNameRevealed = false;
+    isFrontMnemonicOpen = false;
+    lastRenderedStudentId = currentStudent.id;
   }
 
   // Karte einblenden, States ausblenden
@@ -669,8 +803,9 @@ function renderUI() {
 
   DOM.needsReviewBadge.classList.toggle('hidden', !currentStudent.needsReview);
 
-  // Vorderseiten-Aufdecktext aktualisieren
+  // Vorderseiten-Aufdecktext & Vorderseiten-Leuchte (Eselsbrücke) aktualisieren
   updateFrontNameDisplay();
+  updateFrontMnemonicDisplay();
 
   // Rückseiten-Metadaten
   DOM.studentLastName.textContent = (/^(vj\.?|vollj\.?|volljährig|volljaehrig)$/i.test(currentStudent.lastName || '')) ? 'Unbekannt' : (currentStudent.lastName || 'Unbekannt');
@@ -740,8 +875,9 @@ function renderUI() {
     DOM.mnemonicSaveStatus.classList.remove('is-visible');
   }
 
-  // Audio-Status & Buttons
+  // Audio-Status & Buttons (Vorderseite 🔊 & Rückseite ▶️)
   if (currentStudent.audioBlob) {
+    if (DOM.frontAudioBtn) DOM.frontAudioBtn.classList.remove('hidden');
     DOM.playAudioBtn.disabled = false;
     DOM.playAudioBtn.style.opacity = '1';
     if (DOM.exportAudioBtn) DOM.exportAudioBtn.disabled = false;
@@ -749,6 +885,7 @@ function renderUI() {
     DOM.audioStatusLabel.textContent = '🔊 Aussprache vorhanden';
     DOM.audioStatusLabel.className = 'audio-status-badge is-available';
   } else {
+    if (DOM.frontAudioBtn) DOM.frontAudioBtn.classList.add('hidden');
     DOM.playAudioBtn.disabled = true;
     DOM.playAudioBtn.style.opacity = '0.35';
     if (DOM.exportAudioBtn) DOM.exportAudioBtn.disabled = true;
@@ -802,6 +939,7 @@ function handleMnemonicInput(e) {
   const student = updateStudentMnemonic(studentId, e.target.value);
   if (!student) return;
 
+  updateFrontMnemonicDisplay();
   showMnemonicSaving();
 
   clearTimeout(mnemonicSaveTimeout);
@@ -820,6 +958,8 @@ async function handleMnemonicBlur(e) {
   const studentId = e.target.dataset.studentId;
   const student = updateStudentMnemonic(studentId, e.target.value);
   if (!student) return;
+
+  updateFrontMnemonicDisplay();
 
   try {
     await db.saveStudent(student);
@@ -859,6 +999,7 @@ async function handlePlayAudio(e) {
   if (currentStudent && currentStudent.audioBlob) {
     DOM.playAudioBtn.style.transform = 'scale(1.2)';
     DOM.playAudioBtn.classList.add('is-playing');
+    if (DOM.frontAudioBtn) DOM.frontAudioBtn.classList.add('is-playing');
     DOM.audioStatusLabel.textContent = '🔊 Spielt ab...';
     DOM.audioStatusLabel.className = 'audio-status-badge is-playing';
 
@@ -870,6 +1011,7 @@ async function handlePlayAudio(e) {
     } finally {
       DOM.playAudioBtn.style.transform = 'scale(1)';
       DOM.playAudioBtn.classList.remove('is-playing');
+      if (DOM.frontAudioBtn) DOM.frontAudioBtn.classList.remove('is-playing');
       DOM.audioStatusLabel.textContent = '🔊 Aussprache vorhanden';
       DOM.audioStatusLabel.className = 'audio-status-badge is-available';
     }
@@ -905,6 +1047,7 @@ async function handleToggleAudioRecording(e) {
       DOM.recordAudioBtn.classList.remove('is-recording');
 
       currentStudent.audioBlob = audioBlob;
+      currentStudent.audioDeletedByUser = false;
       await db.saveStudent(currentStudent);
       store.emit('stateChange', store.getState());
       showToast('🎙️ Aussprache erfolgreich aufgenommen & gespeichert');
@@ -927,6 +1070,7 @@ async function handleCardAudioFileSelected(e) {
 
   try {
     currentStudent.audioBlob = file;
+    currentStudent.audioDeletedByUser = false;
     await db.saveStudent(currentStudent);
     store.emit('stateChange', store.getState());
     showToast('📥 Audiodatei erfolgreich importiert');
@@ -962,6 +1106,7 @@ async function handleDeleteAudio(e) {
 
   if (confirm(`Aussprache für "${currentStudent.firstName} ${currentStudent.lastName}" wirklich löschen?`)) {
     currentStudent.audioBlob = null;
+    currentStudent.audioDeletedByUser = true;
     await db.saveStudent(currentStudent);
     store.emit('stateChange', store.getState());
     showToast('🗑️ Aussprache gelöscht');
@@ -1154,7 +1299,8 @@ async function handleSaveStudentModal() {
   const address = DOM.inputStudentAddress ? DOM.inputStudentAddress.value.trim() : '';
   const phone = DOM.inputStudentPhone ? DOM.inputStudentPhone.value.trim() : '';
   const email = DOM.inputStudentEmail ? DOM.inputStudentEmail.value.trim() : '';
-  const mnemonic = DOM.inputStudentMnemonic ? DOM.inputStudentMnemonic.value.trim() : '';
+  const rawMnemonic = DOM.inputStudentMnemonic ? DOM.inputStudentMnemonic.value.trim() : '';
+  const mnemonic = ensurePhoneticInMnemonic(rawMnemonic, lastName, firstName, country, true);
   const { currentClass } = store.getState();
 
   if (!lastName) {
@@ -1291,6 +1437,11 @@ async function handleConfirmReviewImport() {
         pendingImportStudents[idx].needsReview = false;
       }
     }
+  });
+
+  // Lautschrift in Zeile 1 für alle importierten Schüler sicherstellen
+  pendingImportStudents.forEach(s => {
+    s.mnemonic = ensurePhoneticInMnemonic(s.mnemonic || '', s.lastName, s.firstName, s.country || '');
   });
 
   await db.saveMultipleStudents(pendingImportStudents);
@@ -1456,7 +1607,7 @@ async function handleCheckForUpdates() {
     if (swResp.status === 'fulfilled' && swResp.value.ok) {
       const swText = await swResp.value.text();
       const match = swText.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
-      if (match && match[1] && match[1] !== 'klassen-trainer-v11.4') {
+      if (match && match[1] && match[1] !== 'klassen-trainer-v11.5') {
         remoteHasNewer = true;
       }
     }

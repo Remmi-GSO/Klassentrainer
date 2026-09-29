@@ -27,7 +27,10 @@ export function setupCardGestures(cardElement, callbacks) {
       e.target.closest('textarea') ||
       e.target.closest('select') ||
       e.target.closest('a') ||
-      e.target.closest('#frontNameBar')
+      e.target.closest('#frontNameBar') ||
+      e.target.closest('#frontMnemonicOverlay') ||
+      e.target.closest('#frontMnemonicBtn') ||
+      e.target.closest('#frontAudioBtn')
     ) {
       return;
     }

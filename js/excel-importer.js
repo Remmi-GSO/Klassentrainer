@@ -5,6 +5,7 @@
 
 import { getStudentsByClass } from './db.js';
 import { formatDateDisplay } from './parser.js';
+import { ensurePhoneticInMnemonic } from './phonetics.js';
 
 /**
  * Normalisiert Zeichenketten für den fehlertoleranten Vergleich:
@@ -533,17 +534,20 @@ export function processImportRows(rawRows, existingStudents, classId) {
   // 3. Wenn die Klasse bisher ganz leer war: Alle Zeilen direkt neu anlegen
   if (remainingExisting.length === 0) {
     for (const row of parsedRows) {
+      const cleanLast = row.lastName || 'Unbekannt';
+      const cleanFirst = row.firstName || '';
+      const cleanCountry = row.country || '';
       const newStudent = {
         id: 'std_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
         classId: classId,
-        firstName: row.firstName || '',
-        lastName: row.lastName || 'Unbekannt',
+        firstName: cleanFirst,
+        lastName: cleanLast,
         birthDate: row.birthDate || null,
-        country: row.country || '',
+        country: cleanCountry,
         address: row.address || '',
         phone: row.phone || '',
         email: row.email || '',
-        mnemonic: '',
+        mnemonic: ensurePhoneticInMnemonic('', cleanLast, cleanFirst, cleanCountry),
         imageBlob: null,
         audioBlob: null,
         needsReview: false,
@@ -625,6 +629,15 @@ export function processImportRows(rawRows, existingStudents, classId) {
     } else if (/^(vj\.?|vollj\.?|volljährig|volljaehrig)$/i.test((bestMatch.firstName || '').trim())) {
       bestMatch.firstName = ''; // VJ als Vorname restlos löschen!
     }
+
+    // E. Lautschrift in der ersten Zeile der Eselsbrücke sicherstellen (anhand Name & Herkunftsland)
+    bestMatch.mnemonic = ensurePhoneticInMnemonic(
+      bestMatch.mnemonic || '',
+      bestMatch.lastName,
+      bestMatch.firstName,
+      bestMatch.country,
+      true
+    );
 
     matchedStudents.push({
       student: bestMatch,

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'klassen-trainer-v11.4';
+const CACHE_NAME = 'klassen-trainer-v11.5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -16,6 +16,7 @@ const ASSETS_TO_CACHE = [
   './js/db.js',
   './js/store.js',
   './js/parser.js',
+  './js/phonetics.js',
   './js/image-processor.js',
   './js/audio.js',
   './js/gestures.js',

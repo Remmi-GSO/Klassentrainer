@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Lokale PWA zum schnellen Lernen von Schülergesichtern und -namen mit Audio-Aussprache.">
-  <meta name="app-version" content="Version 11.4 (v11.4)">
+  <meta name="app-version" content="Version 11.5 (v11.5)">
   
   <title>Klassen-Trainer</title>
   
@@ -50,6 +50,21 @@
           <!-- Vorderseite (Foto) -->
           <div class="card-face card-front">
             <div class="image-container">
+              <!-- Oben links: Leuchte für Eselsbrücke & Lautschrift -->
+              <button id="frontMnemonicBtn" type="button" class="front-corner-btn front-mnemonic-btn hidden" title="Eselsbrücke & Lautschrift einblenden" aria-label="Eselsbrücke einblenden">💡</button>
+              
+              <!-- Oben rechts: Lautsprecher für Aussprache -->
+              <button id="frontAudioBtn" type="button" class="front-corner-btn front-audio-btn hidden" title="Aussprache abspielen" aria-label="Aussprache abspielen">🔊</button>
+
+              <!-- Einblendbares Overlay für Lautschrift & Eselsbrücke auf der Vorderseite -->
+              <div id="frontMnemonicOverlay" class="front-mnemonic-overlay hidden" role="region" aria-label="Eselsbrücke und Aussprache">
+                <div class="front-mnemonic-overlay-header">
+                  <span>💡 Aussprache & Eselsbrücke</span>
+                  <button id="frontMnemonicCloseBtn" type="button" class="front-mnemonic-close" title="Ausblenden" aria-label="Schließen">✕</button>
+                </div>
+                <div id="frontMnemonicOverlayText" class="front-mnemonic-overlay-body"></div>
+              </div>
+
               <span id="needsReviewBadge" class="needs-review-badge hidden">⚠️ Daten prüfen</span>
               <img id="studentPhoto" class="student-photo" src="" alt="Schülerfoto">
             </div>
@@ -103,10 +118,10 @@
             <!-- Eselsbrücke / Merkhilfe direkt auf der Kartenrückseite -->
             <div class="student-mnemonic-container">
               <div class="mnemonic-header">
-                <label for="studentMnemonicInput" class="mnemonic-label">💡 Eselsbrücke für den Nachnamen</label>
+                <label for="studentMnemonicInput" class="mnemonic-label">💡 Lautschrift (Zeile 1) & Eselsbrücke</label>
                 <span id="mnemonicSaveStatus" class="mnemonic-status"></span>
               </div>
-              <textarea id="studentMnemonicInput" class="mnemonic-input" placeholder="Merkhilfe/Eselsbrücke eingeben..." rows="2" maxlength="300"></textarea>
+              <textarea id="studentMnemonicInput" class="mnemonic-input" placeholder="1. Zeile: Lautschrift&#10;2. Zeile: Eigene Eselsbrücke..." rows="3" maxlength="400"></textarea>
             </div>
 
             <!-- Audio- & Aufnahmebereich -->
@@ -321,7 +336,7 @@
             <span class="settings-app-title">
               <span>🎓</span> Klassen-Trainer
             </span>
-            <span id="appVersionBadge" class="app-version-badge">Version 11.4 (v11.4)</span>
+            <span id="appVersionBadge" class="app-version-badge">Version 11.5 (v11.5)</span>
           </div>
           <div class="settings-meta-row">
             <span>🟢 Offline bereit (PWA)</span>
@@ -343,7 +358,7 @@
           <span style="font-size:1.4rem;">📖</span>
           <div>
             <h3 class="modal-title" style="font-size:1.1rem; line-height:1.2;">Funktionen & Anleitung</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Klassen-Trainer Version 11.4 (v11.4)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Klassen-Trainer Version 11.5 (v11.5)</span>
           </div>
         </div>
         <button id="btnCloseFeaturesModal" class="icon-btn">✕</button>
