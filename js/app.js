@@ -23,7 +23,7 @@ import {
   isSpeechRecognitionSupported
 } from './voice-control.js';
 
-export const APP_VERSION = 'Version 11.7 (v11.7)';
+export const APP_VERSION = 'Version 11.8 (v11.8)';
 
 // DOM Referenzen
 const DOM = {
@@ -36,6 +36,9 @@ const DOM = {
   voiceFeedbackBanner: document.getElementById('voiceFeedbackBanner'),
   voiceFeedbackText: document.getElementById('voiceFeedbackText'),
   voiceFeedbackCloseBtn: document.getElementById('voiceFeedbackCloseBtn'),
+  voiceHelpModal: document.getElementById('voiceHelpModal'),
+  btnCloseVoiceHelpModal: document.getElementById('btnCloseVoiceHelpModal'),
+  btnCloseVoiceHelpFooter: document.getElementById('btnCloseVoiceHelpFooter'),
   
   // Tabs
   modeAlphaTab: document.getElementById('modeAlphaTab'),
@@ -391,6 +394,8 @@ function setupEventListeners() {
   if (DOM.btnOpenFeaturesModal) DOM.btnOpenFeaturesModal.addEventListener('click', openFeaturesModal);
   if (DOM.btnCloseFeaturesModal) DOM.btnCloseFeaturesModal.addEventListener('click', closeFeaturesModal);
   if (DOM.btnCloseFeaturesFooter) DOM.btnCloseFeaturesFooter.addEventListener('click', closeFeaturesModal);
+  if (DOM.btnCloseVoiceHelpModal) DOM.btnCloseVoiceHelpModal.addEventListener('click', closeVoiceHelpModal);
+  if (DOM.btnCloseVoiceHelpFooter) DOM.btnCloseVoiceHelpFooter.addEventListener('click', closeVoiceHelpModal);
 
   // Review Modal Aktionen
   if (DOM.btnSaveReview) DOM.btnSaveReview.addEventListener('click', handleConfirmReviewImport);
@@ -721,6 +726,22 @@ function handleVoiceStatusChange(isActive, statusText) {
   }
 }
 
+function openVoiceHelpModal() {
+  if (DOM.voiceHelpModal) {
+    DOM.voiceHelpModal.classList.add('is-active');
+  }
+}
+
+function closeVoiceHelpModal() {
+  if (DOM.voiceHelpModal) {
+    DOM.voiceHelpModal.classList.remove('is-active');
+  }
+}
+
+function isVoiceHelpModalOpen() {
+  return DOM.voiceHelpModal && DOM.voiceHelpModal.classList.contains('is-active');
+}
+
 function handleVoiceCommand(action, label, transcript) {
   if (DOM.voiceFeedbackText) {
     DOM.voiceFeedbackText.textContent = label;
@@ -731,6 +752,33 @@ function handleVoiceCommand(action, label, transcript) {
     }, 2400);
   }
 
+  // Wenn das Info-Menü aktuell geöffnet ist:
+  // Befehle „Zurück“, „Weiter“, „Info“ oder „Stopp“ schließen die Box sofort wieder
+  if (isVoiceHelpModalOpen()) {
+    if (action === 'toggle_voice_help' || action === 'prev_card') {
+      closeVoiceHelpModal();
+      showToast('ℹ️ Befehle geschlossen');
+      return;
+    }
+    if (action === 'next_card') {
+      closeVoiceHelpModal();
+      showToast('ℹ️ Befehle geschlossen');
+      const { currentMode } = store.getState();
+      if (currentMode === 'leitner') {
+        prepareCardTransition();
+        rateCurrentCard(3);
+      } else {
+        handleNextCard();
+      }
+      return;
+    }
+    if (action === 'stop') {
+      closeVoiceHelpModal();
+      stopVoiceControl();
+      return;
+    }
+  }
+
   const { currentMode, students } = store.getState();
   if (!students || students.length === 0) {
     showToast('⚠️ Keine Schüler in dieser Klasse');
@@ -738,6 +786,16 @@ function handleVoiceCommand(action, label, transcript) {
   }
 
   switch (action) {
+    case 'toggle_voice_help':
+      if (isVoiceHelpModalOpen()) {
+        closeVoiceHelpModal();
+        showToast('ℹ️ Befehle geschlossen');
+      } else {
+        openVoiceHelpModal();
+        showToast('ℹ️ Alle Sprachbefehle');
+      }
+      break;
+
     case 'rate_box_1':
       prepareCardTransition();
       if (currentMode === 'leitner') {
@@ -2056,7 +2114,7 @@ async function handleCheckForUpdates() {
     if (swResp.status === 'fulfilled' && swResp.value.ok) {
       const swText = await swResp.value.text();
       const match = swText.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
-      if (match && match[1] && match[1] !== 'klassen-trainer-v11.7') {
+      if (match && match[1] && match[1] !== 'klassen-trainer-v11.8') {
         remoteHasNewer = true;
       }
     }

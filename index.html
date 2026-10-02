@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Lokale PWA zum schnellen Lernen von Schülergesichtern und -namen mit Audio-Aussprache.">
-  <meta name="app-version" content="Version 11.7 (v11.7)">
+  <meta name="app-version" content="Version 11.8 (v11.8)">
   
   <title>Klassen-Trainer</title>
   
@@ -16,10 +16,10 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   
   <!-- CSS Stylesheets -->
-  <link rel="stylesheet" href="css/variables.css?v=11.7">
-  <link rel="stylesheet" href="css/base.css?v=11.7">
-  <link rel="stylesheet" href="css/components.css?v=11.7">
-  <link rel="stylesheet" href="css/modes.css?v=11.7">
+  <link rel="stylesheet" href="css/variables.css?v=11.8">
+  <link rel="stylesheet" href="css/base.css?v=11.8">
+  <link rel="stylesheet" href="css/components.css?v=11.8">
+  <link rel="stylesheet" href="css/modes.css?v=11.8">
 </head>
 <body>
   <div id="app">
@@ -347,7 +347,7 @@
             <span class="settings-app-title">
               <span>🎓</span> Klassen-Trainer
             </span>
-            <span id="appVersionBadge" class="app-version-badge">Version 11.7 (v11.7)</span>
+            <span id="appVersionBadge" class="app-version-badge">Version 11.8 (v11.8)</span>
           </div>
           <div class="settings-meta-row">
             <span>🟢 Offline bereit (PWA)</span>
@@ -384,6 +384,119 @@
     </div>
   </div>
 
+  <!-- Modal: Kompakte Sprachbefehle-Übersicht (HUD) -->
+  <div id="voiceHelpModal" class="modal-overlay">
+    <div class="modal-sheet voice-help-sheet">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:1.3rem;">🎙️</span>
+          <h3 class="modal-title">Sprachbefehle im Auto</h3>
+        </div>
+        <button id="btnCloseVoiceHelpModal" class="icon-btn" title="Schließen" aria-label="Schließen">✕</button>
+      </div>
+      <div class="modal-body" style="padding-top: var(--space-xs); gap: 10px;">
+        <div class="voice-help-grid">
+          
+          <div class="voice-cmd-card">
+            <span class="voice-cmd-icon">👁️</span>
+            <div class="voice-cmd-text">
+              <strong>„Name“ / „Aufdecken“</strong>
+              <small>Deckt Name auf & spricht ihn vor</small>
+            </div>
+          </div>
+
+          <div class="voice-cmd-card">
+            <span class="voice-cmd-icon">🔊</span>
+            <div class="voice-cmd-text">
+              <strong>„Ton“ / „Aussprache“</strong>
+              <small>Spielt Name noch einmal ab</small>
+            </div>
+          </div>
+
+          <div class="voice-cmd-card">
+            <span class="voice-cmd-icon">🔄</span>
+            <div class="voice-cmd-text">
+              <strong>„Umdrehen“ / „Foto“</strong>
+              <small>Wechselt Vorder- & Rückseite</small>
+            </div>
+          </div>
+
+          <div class="voice-cmd-card">
+            <span class="voice-cmd-icon">💡</span>
+            <div class="voice-cmd-text">
+              <strong>„Eselsbrücke“ / „Tipp“</strong>
+              <small>Lautschrift & Merkhilfe einblenden</small>
+            </div>
+          </div>
+
+          <div class="voice-cmd-card rating-box1">
+            <span class="voice-cmd-icon">❌</span>
+            <div class="voice-cmd-text">
+              <strong>„Nicht gewusst“ / „Rot“</strong>
+              <small>Box 1 (in 2 Karten wieder)</small>
+            </div>
+          </div>
+
+          <div class="voice-cmd-card rating-box2">
+            <span class="voice-cmd-icon">⚠️</span>
+            <div class="voice-cmd-text">
+              <strong>„Wackelig“ / „Geht so“</strong>
+              <small>Box 2 (in 6 Karten wieder)</small>
+            </div>
+          </div>
+
+          <div class="voice-cmd-card rating-box3">
+            <span class="voice-cmd-icon">✅</span>
+            <div class="voice-cmd-text">
+              <strong>„Gewusst“ / „Sicher“</strong>
+              <small>Box 3 (für heute gelernt)</small>
+            </div>
+          </div>
+
+          <div class="voice-cmd-card rating-box4">
+            <span class="voice-cmd-icon">📥</span>
+            <div class="voice-cmd-text">
+              <strong>„Kann raus“ / „Weglegen“</strong>
+              <small>Box 4 (aus Runde entfernen)</small>
+            </div>
+          </div>
+
+          <div class="voice-cmd-card">
+            <span class="voice-cmd-icon">⏭️</span>
+            <div class="voice-cmd-text">
+              <strong>„Weiter“ / „Nächste“</strong>
+              <small>Nächste Karte (oder Gewusst)</small>
+            </div>
+          </div>
+
+          <div class="voice-cmd-card">
+            <span class="voice-cmd-icon">⏮️</span>
+            <div class="voice-cmd-text">
+              <strong>„Zurück“</strong>
+              <small>Vorherige Karte (Alphabetisch/Zufall)</small>
+            </div>
+          </div>
+
+          <div class="voice-cmd-card">
+            <span class="voice-cmd-icon">🛑</span>
+            <div class="voice-cmd-text">
+              <strong>„Stopp“ / „Pause“</strong>
+              <small>Sprachsteuerung pausieren</small>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="voice-help-dismiss-hint">
+          💡 Spreche <strong>„Info“</strong>, <strong>„Weiter“</strong> oder <strong>„Zurück“</strong>, um dieses Fenster wieder zu schließen.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCloseVoiceHelpFooter" class="btn-primary" style="width:100%;">Schließen & Weiter</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Feature-Übersicht & Anleitung -->
   <div id="featuresModal" class="modal-overlay">
     <div class="modal-sheet" style="max-height: 90vh;">
@@ -392,7 +505,7 @@
           <span style="font-size:1.4rem;">📖</span>
           <div>
             <h3 class="modal-title" style="font-size:1.1rem; line-height:1.2;">Funktionen & Anleitung</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Klassen-Trainer Version 11.7 (v11.7)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Klassen-Trainer Version 11.8 (v11.8)</span>
           </div>
         </div>
         <button id="btnCloseFeaturesModal" class="icon-btn">✕</button>
@@ -622,6 +735,6 @@
   <script src="libs/xlsx.full.min.js"></script>
   <script src="libs/pdf.min.js"></script>
   <!-- Hauptskript als ES6-Modul -->
-  <script type="module" src="js/app.js?v=11.7"></script>
+  <script type="module" src="js/app.js?v=11.8"></script>
 </body>
 </html>

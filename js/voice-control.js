@@ -209,6 +209,12 @@ function processSpokenCommand(text) {
   if (!text) return;
   const clean = text.toLowerCase().trim();
 
+  // 0. Info / Übersicht / Alle Befehle
+  if (/(alle befehle|sprachbefehle|befehle|übersicht|uebersicht|info|information|hilfe|was kann ich sagen|kommandos)/i.test(clean)) {
+    triggerCommand('toggle_voice_help', 'Befehle ℹ️', clean);
+    return;
+  }
+
   // 1. Box 1: Nicht gewusst (Rot)
   if (/(nicht gewusst|gar nicht|falsch|rot|nochmal|noch mal|wiederholen|keine ahnung|weiss nicht|weiß nicht|box 1|box eins)/i.test(clean)) {
     triggerCommand('rate_box_1', 'Nicht gewusst ❌', clean);
@@ -216,7 +222,7 @@ function processSpokenCommand(text) {
   }
 
   // 2. Box 2: Wackelig / Geht so (Gelb)
-  if (/(wackelig|geht so|mittel|gelb|unsicher|schwierig|halb|so lala|box 2|box zwei)/i.test(clean)) {
+  if (/(wackelig|wacklig|geht so|gehts so|mittel|gelb|unsicher|schwierig|halb|so lala|box 2|box zwei)/i.test(clean)) {
     triggerCommand('rate_box_2', 'Wackelig / Geht so ⚠️', clean);
     return;
   }
@@ -234,19 +240,19 @@ function processSpokenCommand(text) {
   }
 
   // 5. Name / Aufdecken
-  if (/(name|aufdecken|wer ist das|zeige name|sag name|wer)/i.test(clean)) {
+  if (/(name|aufdecken|wer ist das|zeige name|sag name|wer ist er|wer ist sie|wer)/i.test(clean)) {
     triggerCommand('reveal_name', 'Name aufdecken 👁️', clean);
     return;
   }
 
   // 6. Aussprache / Standardton
-  if (/(ton|aussprache|abspielen|vorsprechen|play|audio|hör|hoer|sprich)/i.test(clean)) {
+  if (/(ton|aussprache|sound|audio|abspielen|vorsprechen|play|hör|hoer|sprich)/i.test(clean)) {
     triggerCommand('play_audio', 'Aussprache abspielen 🔊', clean);
     return;
   }
 
-  // 7. Eselsbrücke / Lautschrift
-  if (/(eselsbrücke|eselsbruecke|tipp|hinweis|lautschrift|leuchte)/i.test(clean)) {
+  // 7. Eselsbrücke / Lautschrift (auch 'tip', 'typ' & 'merkhilfe' abfangen)
+  if (/(eselsbrücke|eselsbruecke|merkhilfe|tipp|tip|typ|tipps|hinweis|lautschrift|leuchte)/i.test(clean)) {
     triggerCommand('toggle_mnemonic', 'Eselsbrücke 💡', clean);
     return;
   }
@@ -270,7 +276,7 @@ function processSpokenCommand(text) {
   }
 
   // 11. Stopp / Pause
-  if (/(stopp|stoppen|pause|beenden|aufhören|aufhoeren|stumm|schlaf)/i.test(clean)) {
+  if (/(stopp|stoppen|stop|pause|beenden|aufhören|aufhoeren|stumm|schlaf)/i.test(clean)) {
     stopVoiceControl();
     if (callbacks.onCommand) {
       callbacks.onCommand('stop', 'Sprachsteuerung pausiert 🛑');

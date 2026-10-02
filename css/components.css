@@ -1319,3 +1319,91 @@
   transform: translateY(-1px);
 }
 
+/* ==========================================================================
+   Sprachbefehle HUD & Info-Modal (Auto-Modus)
+   ========================================================================== */
+.voice-help-sheet {
+  background-color: #131d31 !important;
+  max-height: 90vh;
+  max-width: 440px;
+}
+
+.voice-help-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 56vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.voice-cmd-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-surface-elevated);
+  border: var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  transition: transform 0.15s ease;
+}
+
+.voice-cmd-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+}
+
+.voice-cmd-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.voice-cmd-text strong {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+.voice-cmd-text small {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.25;
+}
+
+.voice-cmd-card.rating-box1 {
+  border-left: 3.5px solid #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.voice-cmd-card.rating-box2 {
+  border-left: 3.5px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.voice-cmd-card.rating-box3 {
+  border-left: 3.5px solid #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.voice-cmd-card.rating-box4 {
+  border-left: 3.5px solid #6366f1;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.voice-help-dismiss-hint {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px dashed rgba(56, 189, 248, 0.4);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  color: #38bdf8;
+  text-align: center;
+  line-height: 1.4;
+}
+
+
