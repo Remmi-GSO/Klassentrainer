@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Lokale PWA zum schnellen Lernen von Schülergesichtern und -namen mit Audio-Aussprache.">
-  <meta name="app-version" content="Version 11.6 (v11.6)">
+  <meta name="app-version" content="Version 11.7 (v11.7)">
   
   <title>Klassen-Trainer</title>
   
@@ -16,10 +16,10 @@
   <link rel="apple-touch-icon" href="icons/icon.svg">
   
   <!-- CSS Stylesheets -->
-  <link rel="stylesheet" href="css/variables.css?v=11.6">
-  <link rel="stylesheet" href="css/base.css?v=11.6">
-  <link rel="stylesheet" href="css/components.css?v=11.6">
-  <link rel="stylesheet" href="css/modes.css?v=11.6">
+  <link rel="stylesheet" href="css/variables.css?v=11.7">
+  <link rel="stylesheet" href="css/base.css?v=11.7">
+  <link rel="stylesheet" href="css/components.css?v=11.7">
+  <link rel="stylesheet" href="css/modes.css?v=11.7">
 </head>
 <body>
   <div id="app">
@@ -29,6 +29,7 @@
         <select id="classSelect" class="class-select" aria-label="Klasse auswählen"></select>
       </div>
       <div class="header-actions">
+        <button id="voiceControlBtn" class="icon-btn voice-control-header-btn" title="Sprachsteuerung starten/stoppen (Freihändig fahren)" aria-label="Sprachsteuerung">🎙️</button>
         <button id="installBtn" class="icon-btn hidden" title="Als App installieren" aria-label="App installieren">📥</button>
         <button id="addClassBtn" class="icon-btn" title="Schüler hinzufügen" aria-label="Schüler hinzufügen">➕</button>
         <button id="classMenuBtn" class="icon-btn" title="Einstellungen (⚙️)" aria-label="Einstellungen">⚙️</button>
@@ -44,6 +45,13 @@
 
     <!-- Hauptbühne: 3D-Flip-Karte & Status-Screens -->
     <main class="stage" id="stage">
+      <!-- Schwebender Sprachsteuerungs-Hinweis (Car/Handsfree Mode) -->
+      <div id="voiceFeedbackBanner" class="voice-feedback-banner hidden" role="status" aria-live="polite">
+        <span class="voice-pulse-dot"></span>
+        <span id="voiceFeedbackText" class="voice-feedback-text">Höre zu...</span>
+        <button id="voiceFeedbackCloseBtn" class="voice-feedback-close" title="Sprachsteuerung beenden" aria-label="Schließen">✕</button>
+      </div>
+
       <div class="card-viewport" id="cardViewport">
         <div class="flip-card" id="flipCard">
           
@@ -203,19 +211,19 @@
       <div class="leitner-controls">
         <div class="leitner-btn-grid">
           <button id="btnRateBox1" class="leitner-btn leitner-btn-box1">
-            <span>❌ Gar nicht</span>
+            <span>❌ Nicht gewusst</span>
             <span class="btn-subtext">In 2 Karten wieder</span>
           </button>
           <button id="btnRateBox2" class="leitner-btn leitner-btn-box2">
-            <span>⚠️ Wackelig</span>
+            <span>⚠️ Wackelig / Geht so</span>
             <span class="btn-subtext">In 6 Karten wieder</span>
           </button>
           <button id="btnRateBox3" class="leitner-btn leitner-btn-box3">
-            <span>✅ Sicher</span>
+            <span>✅ Gewusst</span>
             <span class="btn-subtext">Für heute gelernt</span>
           </button>
           <button id="btnRateBox4" class="leitner-btn leitner-btn-box4">
-            <span>📥 Weglegen</span>
+            <span>📥 Kann raus</span>
             <span class="btn-subtext">Aus Runde entfernen</span>
           </button>
         </div>
@@ -309,6 +317,9 @@
         <button id="btnNewClass" class="btn-secondary" style="width:100%; justify-content:flex-start;">
           <span>➕</span> Neue Klasse / Gruppe anlegen
         </button>
+        <button id="btnOpenSortClasses" class="btn-secondary" style="width:100%; justify-content:flex-start;">
+          <span>🔃</span> Reihenfolge der Klassen anpassen
+        </button>
         <button id="btnImportExcel" class="btn-secondary" style="width:100%; justify-content:flex-start;">
           <span>📊</span> Liste importieren (Excel, CSV oder PDF)
         </button>
@@ -336,7 +347,7 @@
             <span class="settings-app-title">
               <span>🎓</span> Klassen-Trainer
             </span>
-            <span id="appVersionBadge" class="app-version-badge">Version 11.6 (v11.6)</span>
+            <span id="appVersionBadge" class="app-version-badge">Version 11.7 (v11.7)</span>
           </div>
           <div class="settings-meta-row">
             <span>🟢 Offline bereit (PWA)</span>
@@ -350,6 +361,29 @@
     </div>
   </div>
 
+  <!-- Modal: Reihenfolge der Klassen anpassen -->
+  <div id="sortClassesModal" class="modal-overlay">
+    <div class="modal-sheet" style="max-height:85vh;">
+      <div class="modal-header">
+        <h3 class="modal-title">Reihenfolge der Klassen</h3>
+        <button id="btnCloseSortClassesModal" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:10px;">
+          Bestimme die Reihenfolge der Klassen im oberen Menü mit <strong>▲</strong> und <strong>▼</strong>:
+        </p>
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+          <button id="btnSortClassesAZ" type="button" class="btn-secondary" style="flex:1; font-size:0.85rem; padding:6px 10px;">🔤 A–Z sortieren</button>
+          <button id="btnSortClassesNewest" type="button" class="btn-secondary" style="flex:1; font-size:0.85rem; padding:6px 10px;">🕒 Neueste zuerst</button>
+        </div>
+        <div id="sortClassesList" class="sort-classes-list"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnSaveSortClasses" class="btn-primary">Fertig</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Feature-Übersicht & Anleitung -->
   <div id="featuresModal" class="modal-overlay">
     <div class="modal-sheet" style="max-height: 90vh;">
@@ -358,12 +392,55 @@
           <span style="font-size:1.4rem;">📖</span>
           <div>
             <h3 class="modal-title" style="font-size:1.1rem; line-height:1.2;">Funktionen & Anleitung</h3>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Klassen-Trainer Version 11.6 (v11.6)</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Klassen-Trainer Version 11.7 (v11.7)</span>
           </div>
         </div>
         <button id="btnCloseFeaturesModal" class="icon-btn">✕</button>
       </div>
       <div class="modal-body" style="padding-top: var(--space-md); gap: 14px;">
+
+        <!-- Feature Neu: Freihändige Sprachsteuerung im Auto -->
+        <div class="feature-guide-card highlight" style="border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.08);">
+          <div class="feature-guide-header">
+            <span class="feature-guide-icon">🎙️</span>
+            <span>Freihändige Sprachsteuerung (Auto-Modus)</span>
+          </div>
+          <div class="feature-guide-body">
+            Ideal zum Lernen während der Autofahrt ohne den Blick von der Straße zu nehmen:
+            <ul>
+              <li>Aktivieren Sie das Mikrofon <strong>🎙️</strong> oben in der Kopfzeile.</li>
+              <li><strong>„Name“</strong> / <strong>„Aufdecken“:</strong> Deckt den Schülernamen auf und liest ihn automatisch vor!</li>
+              <li><strong>„Aussprache“</strong> / <strong>„Ton“:</strong> Spielt die Namensaussprache ab.</li>
+              <li><strong>„Umdrehen“:</strong> Dreht die Karte zwischen Foto und Rückseite um.</li>
+              <li><strong>4 Leitner-Einschätzungen im intelligenten Modus:</strong>
+                <ul style="margin-top:4px;">
+                  <li>🔴 <strong>„Nicht gewusst“</strong> / <em>„Gar nicht“</em> / <em>„Rot“</em> (Box 1)</li>
+                  <li>🟡 <strong>„Wackelig“</strong> / <em>„Geht so“</em> / <em>„Gelb“</em> (Box 2)</li>
+                  <li>🟢 <strong>„Gewusst“</strong> / <em>„Sicher“</em> / <em>„Grün“</em> (Box 3)</li>
+                  <li>📥 <strong>„Kann raus“</strong> / <em>„Weglegen“</em> (Box 4)</li>
+                </ul>
+              </li>
+              <li><strong>„Weiter“</strong> / <strong>„Zurück“:</strong> Blättert vor oder zurück.</li>
+              <li><strong>„Stopp“:</strong> Pausiert die Sprachsteuerung wieder.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Feature Neu: Reihenfolge der Klassen anpassen -->
+        <div class="feature-guide-card">
+          <div class="feature-guide-header">
+            <span class="feature-guide-icon">🔃</span>
+            <span>Reihenfolge der Klassen anpassen</span>
+          </div>
+          <div class="feature-guide-body">
+            Organisieren Sie Ihre Klassen im Auswahlmenü ganz nach Wunsch:
+            <ul>
+              <li>Öffnen Sie <em>Einstellungen ⚙️ ➔ Reihenfolge der Klassen anpassen</em>.</li>
+              <li>Verschieben Sie einzelne Klassen mit <strong>▲</strong> und <strong>▼</strong> an die gewünschte Position.</li>
+              <li>Oder sortieren Sie mit einem Tipp auf <strong>🔤 A–Z</strong> alphabetisch bzw. <strong>🕒 Neueste zuerst</strong>.</li>
+            </ul>
+          </div>
+        </div>
 
         <!-- Feature 1: Audio / Aussprache einsprechen lassen -->
         <div class="feature-guide-card highlight">
@@ -545,6 +622,6 @@
   <script src="libs/xlsx.full.min.js"></script>
   <script src="libs/pdf.min.js"></script>
   <!-- Hauptskript als ES6-Modul -->
-  <script type="module" src="js/app.js?v=11.6"></script>
+  <script type="module" src="js/app.js?v=11.7"></script>
 </body>
 </html>

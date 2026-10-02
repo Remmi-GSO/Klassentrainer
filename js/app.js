@@ -14,8 +14,16 @@ import { initRandomMode, randomNext, randomPrev } from './modes/random-mode.js';
 import { initLeitnerMode, rateCurrentCard } from './modes/leitner-mode.js';
 import { processExcelImport, exportClassExcel } from './excel-importer.js';
 import { ensurePhoneticInMnemonic, getDefaultAudioUrl } from './phonetics.js';
+import {
+  initVoiceControl,
+  startVoiceControl,
+  stopVoiceControl,
+  toggleVoiceControl,
+  isVoiceControlActive,
+  isSpeechRecognitionSupported
+} from './voice-control.js';
 
-export const APP_VERSION = 'Version 11.6 (v11.6)';
+export const APP_VERSION = 'Version 11.7 (v11.7)';
 
 // DOM Referenzen
 const DOM = {
@@ -24,6 +32,10 @@ const DOM = {
   addClassBtn: document.getElementById('addClassBtn'),
   classMenuBtn: document.getElementById('classMenuBtn'),
   installBtn: document.getElementById('installBtn'),
+  voiceControlBtn: document.getElementById('voiceControlBtn'),
+  voiceFeedbackBanner: document.getElementById('voiceFeedbackBanner'),
+  voiceFeedbackText: document.getElementById('voiceFeedbackText'),
+  voiceFeedbackCloseBtn: document.getElementById('voiceFeedbackCloseBtn'),
   
   // Tabs
   modeAlphaTab: document.getElementById('modeAlphaTab'),
@@ -130,6 +142,7 @@ const DOM = {
   // Class Management & Review Modals
   classModal: document.getElementById('classModal'),
   btnNewClass: document.getElementById('btnNewClass'),
+  btnOpenSortClasses: document.getElementById('btnOpenSortClasses'),
   btnImportExcel: document.getElementById('btnImportExcel'),
   excelFileInput: document.getElementById('excelFileInput'),
   btnExportExcel: document.getElementById('btnExportExcel'),
@@ -139,6 +152,14 @@ const DOM = {
   btnCloseClassModal: document.getElementById('btnCloseClassModal'),
   zipFileInput: document.getElementById('zipFileInput'),
   btnImportZip: document.getElementById('btnImportZip'),
+
+  // Sort Classes Modal
+  sortClassesModal: document.getElementById('sortClassesModal'),
+  btnCloseSortClassesModal: document.getElementById('btnCloseSortClassesModal'),
+  btnSaveSortClasses: document.getElementById('btnSaveSortClasses'),
+  btnSortClassesAZ: document.getElementById('btnSortClassesAZ'),
+  btnSortClassesNewest: document.getElementById('btnSortClassesNewest'),
+  sortClassesList: document.getElementById('sortClassesList'),
 
   // New Class Modal
   newClassModal: document.getElementById('newClassModal'),
@@ -227,6 +248,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // UI Event Listener verbinden
   setupEventListeners();
+
+  // Sprachsteuerung initialisieren
+  setupVoiceControl();
 
   // Store Event Listener
   store.on('stateChange', renderUI);
@@ -352,6 +376,16 @@ function setupEventListeners() {
   DOM.btnResetLeitner.addEventListener('click', handleResetLeitnerProgress);
   DOM.btnDeleteClass.addEventListener('click', handleDeleteCurrentClass);
   DOM.btnCloseClassModal.addEventListener('click', closeClassMenuModal);
+  if (DOM.btnOpenSortClasses) {
+    DOM.btnOpenSortClasses.addEventListener('click', () => {
+      closeClassMenuModal();
+      openSortClassesModal();
+    });
+  }
+  if (DOM.btnCloseSortClassesModal) DOM.btnCloseSortClassesModal.addEventListener('click', closeSortClassesModal);
+  if (DOM.btnSaveSortClasses) DOM.btnSaveSortClasses.addEventListener('click', closeSortClassesModal);
+  if (DOM.btnSortClassesAZ) DOM.btnSortClassesAZ.addEventListener('click', handleSortClassesAZ);
+  if (DOM.btnSortClassesNewest) DOM.btnSortClassesNewest.addEventListener('click', handleSortClassesNewest);
   if (DOM.btnCheckForUpdates) DOM.btnCheckForUpdates.addEventListener('click', handleCheckForUpdates);
   if (DOM.btnForceReload) DOM.btnForceReload.addEventListener('click', handleForceReload);
   if (DOM.btnOpenFeaturesModal) DOM.btnOpenFeaturesModal.addEventListener('click', openFeaturesModal);
@@ -394,45 +428,55 @@ function handleEmptyAddClick() {
 }
 
 /* ==========================================================================
-   Klassen- & Daten-Management
+   Klassen-Reihenfolge & Speicherung
    ========================================================================== */
-async function loadClasses() {
-  let classes = await db.getAllClasses();
+function getSavedClassOrder() {
+  try {
+    const raw = localStorage.getItem('schueler_trainer_class_order');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (_) {}
+  return [];
+}
+
+function saveClassOrder(orderArray) {
+  try {
+    localStorage.setItem('schueler_trainer_class_order', JSON.stringify(orderArray));
+  } catch (_) {}
+}
+
+function applyClassOrdering(classes) {
+  const order = getSavedClassOrder();
+  if (!order || order.length === 0) return classes;
+
+  return [...classes].sort((a, b) => {
+    const idxA = order.indexOf(a.id);
+    const idxB = order.indexOf(b.id);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.name.localeCompare(b.name, 'de', { numeric: true, sensitivity: 'base' });
+  });
+}
+
+function renderClassSelectDropdown(classes, selectedId) {
   DOM.classSelect.innerHTML = '';
 
-  // Automatische Bereinigung des verwaisten Dummys "Meine Klasse 1"
-  const dummyIndex = classes.findIndex(c => c.name === 'Meine Klasse 1');
-  if (dummyIndex !== -1) {
-    const dummyStudents = await db.getStudentsByClass(classes[dummyIndex].id);
-    if (dummyStudents.length === 0) {
-      await db.deleteClass(classes[dummyIndex].id);
-      classes.splice(dummyIndex, 1);
-    }
-  }
-
-  if (classes.length === 0) {
+  if (!classes || classes.length === 0) {
     const emptyOpt = document.createElement('option');
     emptyOpt.value = '';
     emptyOpt.textContent = '— Keine Klasse vorhanden —';
     DOM.classSelect.appendChild(emptyOpt);
-
-    const addClassOpt = document.createElement('option');
-    addClassOpt.value = '__ADD_NEW_CLASS__';
-    addClassOpt.textContent = '➕ Neue Klasse anlegen...';
-    DOM.classSelect.appendChild(addClassOpt);
-
-    DOM.classSelect.value = '';
-    store.setState({ classes: [], currentClass: null, students: [] });
-    renderUI();
-    return;
+  } else {
+    classes.forEach(cls => {
+      const opt = document.createElement('option');
+      opt.value = cls.id;
+      opt.textContent = cls.name;
+      DOM.classSelect.appendChild(opt);
+    });
   }
-
-  classes.forEach(cls => {
-    const opt = document.createElement('option');
-    opt.value = cls.id;
-    opt.textContent = cls.name;
-    DOM.classSelect.appendChild(opt);
-  });
 
   // Direkte Option zum Anlegen einer neuen Klasse im Dropdown
   const sepOpt = document.createElement('option');
@@ -445,15 +489,333 @@ async function loadClasses() {
   addClassOpt.textContent = '➕ Neue Klasse anlegen...';
   DOM.classSelect.appendChild(addClassOpt);
 
+  if (selectedId) {
+    DOM.classSelect.value = selectedId;
+  }
+}
+
+/* ==========================================================================
+   Klassen- & Daten-Management
+   ========================================================================== */
+async function loadClasses() {
+  let classes = await db.getAllClasses();
+
+  // Automatische Bereinigung des verwaisten Dummys "Meine Klasse 1"
+  const dummyIndex = classes.findIndex(c => c.name === 'Meine Klasse 1');
+  if (dummyIndex !== -1) {
+    const dummyStudents = await db.getStudentsByClass(classes[dummyIndex].id);
+    if (dummyStudents.length === 0) {
+      await db.deleteClass(classes[dummyIndex].id);
+      classes.splice(dummyIndex, 1);
+    }
+  }
+
+  if (classes.length === 0) {
+    renderClassSelectDropdown([], '');
+    DOM.classSelect.value = '';
+    store.setState({ classes: [], currentClass: null, students: [] });
+    renderUI();
+    return;
+  }
+
+  // Eigene Reihenfolge der Klassen anwenden
+  classes = applyClassOrdering(classes);
+
   // Letzte ausgewählte Klasse und Modus aus localStorage wiederherstellen
   const savedClassId = localStorage.getItem('schueler_trainer_last_class_id');
   const savedMode = localStorage.getItem('schueler_trainer_last_mode') || 'alpha';
 
   const selectedClass = (savedClassId && classes.find(c => c.id === savedClassId)) || classes[0];
-  DOM.classSelect.value = selectedClass.id;
-  store.setState({ classes, currentClass: selectedClass, currentMode: savedMode });
+  renderClassSelectDropdown(classes, selectedClass.id);
 
+  store.setState({ classes, currentClass: selectedClass, currentMode: savedMode });
   await loadStudentsForClass(selectedClass.id);
+}
+
+/* ==========================================================================
+   Klassen-Reihenfolge anpassen Dialog
+   ========================================================================== */
+function openSortClassesModal() {
+  if (DOM.sortClassesModal) {
+    renderSortClassesList();
+    DOM.sortClassesModal.classList.add('is-active');
+  }
+}
+
+function closeSortClassesModal() {
+  if (DOM.sortClassesModal) {
+    DOM.sortClassesModal.classList.remove('is-active');
+  }
+}
+
+async function renderSortClassesList() {
+  if (!DOM.sortClassesList) return;
+  DOM.sortClassesList.innerHTML = '';
+
+  const { classes, currentClass } = store.getState();
+  if (!classes || classes.length === 0) {
+    DOM.sortClassesList.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">Keine Klassen vorhanden</p>';
+    return;
+  }
+
+  const studentCounts = await Promise.all(classes.map(async (c) => {
+    try {
+      const studs = await db.getStudentsByClass(c.id);
+      return studs ? studs.length : 0;
+    } catch (_) {
+      return 0;
+    }
+  }));
+
+  classes.forEach((cls, idx) => {
+    const isCurrent = currentClass && currentClass.id === cls.id;
+    const count = studentCounts[idx];
+
+    const item = document.createElement('div');
+    item.className = 'sort-class-item' + (isCurrent ? ' is-current' : '');
+
+    const info = document.createElement('div');
+    info.className = 'sort-class-info';
+
+    const name = document.createElement('span');
+    name.className = 'sort-class-name';
+    name.textContent = cls.name + (isCurrent ? ' (Aktiv)' : '');
+
+    const meta = document.createElement('span');
+    meta.className = 'sort-class-count';
+    meta.textContent = `${count} Schüler`;
+
+    info.appendChild(name);
+    info.appendChild(meta);
+
+    const actions = document.createElement('div');
+    actions.className = 'sort-class-actions';
+
+    const upBtn = document.createElement('button');
+    upBtn.type = 'button';
+    upBtn.className = 'btn-sort-move';
+    upBtn.title = 'Nach oben verschieben';
+    upBtn.textContent = '▲';
+    upBtn.disabled = idx === 0;
+    upBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      moveClassOrder(cls.id, -1);
+    });
+
+    const downBtn = document.createElement('button');
+    downBtn.type = 'button';
+    downBtn.className = 'btn-sort-move';
+    downBtn.title = 'Nach unten verschieben';
+    downBtn.textContent = '▼';
+    downBtn.disabled = idx === classes.length - 1;
+    downBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      moveClassOrder(cls.id, 1);
+    });
+
+    actions.appendChild(upBtn);
+    actions.appendChild(downBtn);
+
+    item.appendChild(info);
+    item.appendChild(actions);
+
+    DOM.sortClassesList.appendChild(item);
+  });
+}
+
+async function moveClassOrder(classId, delta) {
+  const { classes, currentClass } = store.getState();
+  const currentIndex = classes.findIndex(c => c.id === classId);
+  if (currentIndex === -1) return;
+
+  const targetIndex = currentIndex + delta;
+  if (targetIndex < 0 || targetIndex >= classes.length) return;
+
+  const newClasses = [...classes];
+  const item = newClasses.splice(currentIndex, 1)[0];
+  newClasses.splice(targetIndex, 0, item);
+
+  saveClassOrder(newClasses.map(c => c.id));
+  store.setState({ classes: newClasses });
+
+  const activeId = currentClass ? currentClass.id : newClasses[0]?.id;
+  renderClassSelectDropdown(newClasses, activeId);
+  await renderSortClassesList();
+}
+
+async function handleSortClassesAZ() {
+  const { classes, currentClass } = store.getState();
+  if (!classes || classes.length <= 1) return;
+
+  const sorted = [...classes].sort((a, b) => a.name.localeCompare(b.name, 'de', { numeric: true, sensitivity: 'base' }));
+  saveClassOrder(sorted.map(c => c.id));
+  store.setState({ classes: sorted });
+
+  const activeId = currentClass ? currentClass.id : sorted[0]?.id;
+  renderClassSelectDropdown(sorted, activeId);
+  await renderSortClassesList();
+  showToast('🔤 Klassen alphabetisch (A–Z) sortiert');
+}
+
+async function handleSortClassesNewest() {
+  const { classes, currentClass } = store.getState();
+  if (!classes || classes.length <= 1) return;
+
+  const sorted = [...classes].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  saveClassOrder(sorted.map(c => c.id));
+  store.setState({ classes: sorted });
+
+  const activeId = currentClass ? currentClass.id : sorted[0]?.id;
+  renderClassSelectDropdown(sorted, activeId);
+  await renderSortClassesList();
+  showToast('🕒 Neueste Klassen zuerst sortiert');
+}
+
+/* ==========================================================================
+   Sprachsteuerung (Web Speech API) - Hands-free / Autofahren
+   ========================================================================== */
+function setupVoiceControl() {
+  if (!DOM.voiceControlBtn) return;
+
+  initVoiceControl({
+    onCommand: handleVoiceCommand,
+    onStatusChange: handleVoiceStatusChange,
+    onError: (msg) => showToast('🎙️ ' + msg)
+  });
+
+  DOM.voiceControlBtn.addEventListener('click', () => {
+    if (!isSpeechRecognitionSupported()) {
+      showToast('🎙️ Spracherkennung in diesem Browser nicht verfügbar (z. B. Chrome/Edge erforderlich)');
+      return;
+    }
+    const active = toggleVoiceControl();
+    if (active) {
+      showToast('🎙️ Sprachsteuerung aktiv – Spreche Befehle');
+    }
+  });
+
+  if (DOM.voiceFeedbackCloseBtn) {
+    DOM.voiceFeedbackCloseBtn.addEventListener('click', () => {
+      stopVoiceControl();
+      showToast('🎙️ Sprachsteuerung pausiert');
+    });
+  }
+}
+
+function handleVoiceStatusChange(isActive, statusText) {
+  if (DOM.voiceControlBtn) {
+    DOM.voiceControlBtn.classList.toggle('is-listening', isActive);
+    DOM.voiceControlBtn.title = isActive
+      ? 'Sprachsteuerung aktiv (Tippen zum Pausieren)'
+      : 'Sprachsteuerung starten (Freihändig fahren)';
+  }
+  if (DOM.voiceFeedbackBanner) {
+    if (isActive) {
+      DOM.voiceFeedbackBanner.classList.remove('hidden');
+      if (DOM.voiceFeedbackText) {
+        DOM.voiceFeedbackText.textContent = statusText || 'Höre zu...';
+      }
+    } else {
+      DOM.voiceFeedbackBanner.classList.add('hidden');
+    }
+  }
+}
+
+function handleVoiceCommand(action, label, transcript) {
+  if (DOM.voiceFeedbackText) {
+    DOM.voiceFeedbackText.textContent = label;
+    setTimeout(() => {
+      if (isVoiceControlActive() && DOM.voiceFeedbackText) {
+        DOM.voiceFeedbackText.textContent = 'Höre zu...';
+      }
+    }, 2400);
+  }
+
+  const { currentMode, students } = store.getState();
+  if (!students || students.length === 0) {
+    showToast('⚠️ Keine Schüler in dieser Klasse');
+    return;
+  }
+
+  switch (action) {
+    case 'rate_box_1':
+      prepareCardTransition();
+      if (currentMode === 'leitner') {
+        rateCurrentCard(1);
+      }
+      showToast('Nicht gewusst ❌');
+      break;
+
+    case 'rate_box_2':
+      prepareCardTransition();
+      if (currentMode === 'leitner') {
+        rateCurrentCard(2);
+      }
+      showToast('Wackelig / Geht so ⚠️');
+      break;
+
+    case 'rate_box_3':
+      prepareCardTransition();
+      if (currentMode === 'leitner') {
+        rateCurrentCard(3);
+      }
+      showToast('Gewusst ✅');
+      break;
+
+    case 'rate_box_4':
+      prepareCardTransition();
+      if (currentMode === 'leitner') {
+        rateCurrentCard(4);
+      }
+      showToast('Kann raus 📥');
+      break;
+
+    case 'reveal_name':
+      isFrontNameRevealed = true;
+      updateFrontNameDisplay();
+      handlePlayAudio();
+      showToast('Name aufgedeckt 👁️');
+      break;
+
+    case 'play_audio':
+      handlePlayAudio();
+      showToast('Aussprache 🔊');
+      break;
+
+    case 'toggle_mnemonic':
+      handleToggleFrontMnemonic();
+      showToast('Eselsbrücke 💡');
+      break;
+
+    case 'flip_card':
+      toggleCardFlip();
+      showToast('Karte gedreht 🔄');
+      break;
+
+    case 'next_card':
+      if (currentMode === 'leitner') {
+        prepareCardTransition();
+        rateCurrentCard(3);
+        showToast('Weiter (Gewusst ✅)');
+      } else {
+        handleNextCard();
+        showToast('Weiter ⏭️');
+      }
+      break;
+
+    case 'prev_card':
+      if (currentMode === 'leitner') {
+        showToast('ℹ️ Im intelligenten Modus bitte bewerten');
+      } else {
+        handlePrevCard();
+        showToast('Zurück ⏮️');
+      }
+      break;
+
+    case 'stop':
+      showToast('Sprachsteuerung pausiert 🛑');
+      break;
+  }
 }
 
 async function selectClass(classId) {
@@ -1694,7 +2056,7 @@ async function handleCheckForUpdates() {
     if (swResp.status === 'fulfilled' && swResp.value.ok) {
       const swText = await swResp.value.text();
       const match = swText.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
-      if (match && match[1] && match[1] !== 'klassen-trainer-v11.6') {
+      if (match && match[1] && match[1] !== 'klassen-trainer-v11.7') {
         remoteHasNewer = true;
       }
     }

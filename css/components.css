@@ -1144,3 +1144,178 @@
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ==========================================================================
+   Sprachsteuerung & Voice Feedback (Freihändig fahren)
+   ========================================================================== */
+.voice-control-header-btn {
+  position: relative;
+  transition: all 0.25s ease;
+}
+
+.voice-control-header-btn.is-listening {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.45);
+  animation: voice-btn-pulse 1.8s infinite;
+}
+
+@keyframes voice-btn-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+  70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.voice-feedback-banner {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 12px;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  border-radius: var(--radius-full);
+  color: #f8fafc;
+  font-size: 0.85rem;
+  font-weight: 600;
+  animation: banner-in 0.25s ease-out;
+  pointer-events: auto;
+}
+
+@keyframes banner-in {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.voice-pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  flex-shrink: 0;
+  animation: voice-dot-pulse 1.4s infinite;
+}
+
+@keyframes voice-dot-pulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.25); opacity: 1; filter: drop-shadow(0 0 4px #10b981); }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+.voice-feedback-text {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.voice-feedback-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 2px 4px;
+  margin-left: 2px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.voice-feedback-close:hover {
+  color: #fff;
+}
+
+/* ==========================================================================
+   Klassen-Reihenfolge anpassen Modal
+   ========================================================================== */
+.sort-classes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 48vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.sort-class-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--bg-surface-elevated);
+  border: var(--border-subtle);
+  border-radius: var(--radius-md);
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.sort-class-item.is-current {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.sort-class-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.sort-class-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sort-class-count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.sort-class-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-sort-move {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  border: var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.btn-sort-move:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.btn-sort-move:not(:disabled):hover {
+  background: var(--bg-surface);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
